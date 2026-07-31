@@ -1,0 +1,59 @@
+name: Terraform Destroy
+
+# So roda manualmente e exige digitar "destroy" - isso destroi TODO o
+# ambiente (cluster GKE, VPC, Artifact Registry, budget). Rode ao final
+# de cada teste para nao consumir os creditos da conta a toa.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Digite "destroy" para confirmar a destruicao de todo o ambiente de teste'
+        required: true
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  TF_WORKING_DIR: infra/environments/test
+  TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
+  TF_VAR_project_number: ${{ secrets.GCP_PROJECT_NUMBER }}
+  TF_VAR_billing_account_id: ${{ secrets.GCP_BILLING_ACCOUNT_ID }}
+  TF_VAR_region: us-central1
+  TF_VAR_network_name: aiops-vpc
+  TF_VAR_cluster_name: aiops-gke
+  TF_VAR_budget_amount_usd: 250
+  TF_VAR_enable_budget_alert: true
+
+jobs:
+  destroy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validar confirmacao
+        if: ${{ github.event.inputs.confirm != 'destroy' }}
+        run: |
+          echo "Confirmacao invalida. Digite exatamente 'destroy' para prosseguir."
+          exit 1
+
+      - uses: actions/checkout@v4
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.8"
+
+      - name: Terraform Init
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: |
+          terraform init \
+            -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
+            -backend-config="prefix=environments/test"
+
+      - name: Terraform Destroy
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform destroy -auto-approve -input=false

@@ -1,0 +1,25 @@
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+*.tfvars
+!*.tfvars.example
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraform.tfstate.lock.info
+
+# Credenciais e segredos
+*-key.json
+*-credentials.json
+service-account*.json
+.env
+.env.*
+
+# SO / editor
+.DS_Store
+.vscode/
+.idea/

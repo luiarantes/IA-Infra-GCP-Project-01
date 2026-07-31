@@ -1,0 +1,12 @@
+# Copie para terraform.tfvars para rodar localmente (esse arquivo real fica
+# fora do git - veja .gitignore). No CI, essas variaveis vem de secrets do
+# GitHub via TF_VAR_* - veja .github/workflows/.
+
+project_id          = "meu-projeto-aiops-test"
+project_number      = "123456789012"
+region              = "us-central1"
+billing_account_id  = "XXXXXX-XXXXXX-XXXXXX"
+network_name        = "aiops-vpc"
+cluster_name        = "aiops-gke"
+budget_amount_usd   = 250
+enable_budget_alert = true
