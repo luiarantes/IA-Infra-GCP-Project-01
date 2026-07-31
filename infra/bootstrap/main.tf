@@ -54,12 +54,14 @@ resource "google_project_iam_member" "github_actions_roles" {
   for_each = toset([
     "roles/container.admin",
     "roles/compute.networkAdmin",
+    "roles/compute.securityAdmin", # firewall rules ficam de fora do networkAdmin de proposito
     "roles/artifactregistry.admin",
     "roles/storage.admin",
     "roles/iam.serviceAccountUser",
     "roles/serviceusage.serviceUsageAdmin",
     "roles/monitoring.editor",
     "roles/logging.admin",
+    "roles/pubsub.admin", # topico de alertas do modulo budget
   ])
 
   project = var.project_id
