@@ -28,7 +28,7 @@ que o alerta foi resolvido.
 - [x] Fase 0 — Bootstrap (state bucket, Workload Identity Federation)
 - [x] Fase 1 — Infra base (VPC, GKE Autopilot, Artifact Registry, budget alert)
 - [x] Fase 2 — CI/CD do Terraform validado end-to-end
-- [ ] Fase 3 — Deploy do app de teste (podinfo)
+- [x] Fase 3 — Deploy do app de teste (podinfo)
 - [ ] Fase 4 — Stack de observabilidade
 - [ ] Fase 5 — Agente: log-analyzer → alerta
 - [ ] Fase 6 — Agente: diagnóstico → PR de fix
@@ -75,6 +75,50 @@ para o módulo de budget, em [`infra/bootstrap/README.md`](infra/bootstrap/READM
    digitando `destroy` para confirmar) → **derruba tudo antes de sair**
 
 Nunca deixe o cluster no ar sem necessidade — o orçamento é de $300 no total.
+
+## Como acessar o app de teste (podinfo) depois do deploy
+
+O deploy em si é automático (push em `apps/**` dispara o
+`deploy-app.yml`), mas para você acessar o app do seu computador precisa
+configurar o `kubectl` localmente. Passo a passo:
+
+**1. Ter `gcloud` e `kubectl` instalados** ([instruções oficiais](https://cloud.google.com/sdk/docs/install))
+
+**2. Instalar o plugin de autenticação do GKE** — é obrigatório desde que
+o Kubernetes removeu a autenticação nativa de cada cloud provider do
+`kubectl` (client-go >= 1.26). Sem ele, `kubectl` não consegue autenticar
+em cluster nenhum do GKE, **mesmo que você já tenha o `kubectl` instalado
+por outro meio** (Homebrew, apt, etc. — o plugin é uma ferramenta separada,
+específica do Google, e não vem junto):
+
+```bash
+gcloud components install gke-gcloud-auth-plugin
+```
+
+**3. Buscar as credenciais do cluster** (gera uma entrada no seu
+`~/.kube/config`):
+
+```bash
+gcloud container clusters get-credentials aiops-gke --region us-central1 --project SEU_PROJECT_ID
+```
+
+**4. Confirmar que o pod está rodando:**
+
+```bash
+kubectl get pods
+```
+
+Deve aparecer algo como `podinfo-xxxxxxxxxx-xxxxx   1/1   Running`.
+
+**5. Acessar o app localmente** (o Service é `ClusterIP`, ou seja, sem IP
+público de propósito — acesso é sempre via túnel):
+
+```bash
+kubectl port-forward svc/podinfo 9898:9898
+```
+
+Abra `http://localhost:9898` no navegador. `Ctrl+C` no terminal encerra o
+túnel quando terminar.
 
 ## Padrões seguidos neste repositório
 
