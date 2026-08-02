@@ -29,7 +29,7 @@ que o alerta foi resolvido.
 - [x] Fase 1 — Infra base (VPC, GKE Autopilot, Artifact Registry, budget alert)
 - [x] Fase 2 — CI/CD do Terraform validado end-to-end
 - [x] Fase 3 — Deploy do app de teste (podinfo)
-- [ ] Fase 4 — Stack de observabilidade (código pronto, falta aplicar)
+- [x] Fase 4 — Stack de observabilidade (métrica de erro, alerta, Managed Prometheus)
 - [ ] Fase 5 — Agente: log-analyzer → alerta
 - [ ] Fase 6 — Agente: diagnóstico → PR de fix
 - [ ] Fase 7 — Loop de self-healing com aprovação humana + failsafe de custo
