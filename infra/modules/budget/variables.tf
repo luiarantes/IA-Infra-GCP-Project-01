@@ -16,10 +16,16 @@ variable "budget_display_name" {
   default = "aiops-test-budget"
 }
 
-variable "budget_amount_usd" {
-  description = "Teto do orcamento em USD - recomendado deixar margem abaixo dos $300 de credito"
+variable "budget_amount" {
+  description = "Teto do orcamento, na moeda de budget_currency_code"
   type        = number
   default     = 250
+}
+
+variable "budget_currency_code" {
+  description = "Codigo ISO 4217 da moeda - precisa bater com a moeda da billing account (gcloud billing accounts describe <id> --format='value(currencyCode)')"
+  type        = string
+  default     = "BRL"
 }
 
 variable "alert_thresholds" {

@@ -52,11 +52,12 @@ module "artifact_registry" {
 module "budget" {
   source = "../../modules/budget"
 
-  project_id          = var.project_id
-  project_number      = var.project_number
-  billing_account_id  = var.billing_account_id
-  budget_amount_usd   = var.budget_amount_usd
-  enable_budget_alert = var.enable_budget_alert
+  project_id           = var.project_id
+  project_number       = var.project_number
+  billing_account_id   = var.billing_account_id
+  budget_amount        = var.budget_amount
+  budget_currency_code = var.budget_currency_code
+  enable_budget_alert  = var.enable_budget_alert
 
   depends_on = [google_project_service.apis]
 }

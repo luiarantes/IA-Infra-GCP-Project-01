@@ -26,9 +26,14 @@ variable "cluster_name" {
   default = "aiops-gke"
 }
 
-variable "budget_amount_usd" {
+variable "budget_amount" {
   type    = number
   default = 250
+}
+
+variable "budget_currency_code" {
+  type    = string
+  default = "BRL"
 }
 
 variable "enable_budget_alert" {

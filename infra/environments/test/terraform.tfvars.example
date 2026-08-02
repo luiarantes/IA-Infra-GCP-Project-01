@@ -2,11 +2,12 @@
 # fora do git - veja .gitignore). No CI, essas variaveis vem de secrets do
 # GitHub via TF_VAR_* - veja .github/workflows/.
 
-project_id          = "meu-projeto-aiops-test"
-project_number      = "123456789012"
-region              = "us-central1"
-billing_account_id  = "XXXXXX-XXXXXX-XXXXXX"
-network_name        = "aiops-vpc"
-cluster_name        = "aiops-gke"
-budget_amount_usd   = 250
-enable_budget_alert = true
+project_id            = "meu-projeto-aiops-test"
+project_number        = "123456789012"
+region                = "us-central1"
+billing_account_id    = "XXXXXX-XXXXXX-XXXXXX"
+network_name          = "aiops-vpc"
+cluster_name          = "aiops-gke"
+budget_amount         = 250
+budget_currency_code  = "BRL" # precisa bater com a moeda da sua billing account
+enable_budget_alert   = true
