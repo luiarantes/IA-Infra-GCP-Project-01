@@ -19,6 +19,27 @@ self-hosted, para não gerar custo extra de compute.
   `sample-app` e uma política de alerta no Cloud Monitoring que dispara
   quando essa contagem passa de `error_threshold` (default: qualquer erro)
   numa janela de 5 minutos.
+- **Alerta de restart de container**: uma segunda política, baseada na
+  métrica nativa do GKE `kubernetes.io/container/restart_count`, dispara
+  sempre que um container reinicia. Ver "Limitação real encontrada" abaixo
+  — este é o alerta que de fato funciona com o podinfo.
+
+## Limitação real encontrada (testada em 2026-08-01)
+
+Provocamos um crash de propósito (`curl -X POST /panic` no podinfo) e
+descobrimos que **o alerta baseado em log (`severity>=ERROR`) nunca
+dispara para essa aplicação**: o podinfo usa a biblioteca Zap, que escreve
+o campo `"level"` no JSON de log, não `"severity"` (o nome que o Cloud
+Logging reconhece para promover automaticamente a severidade do
+`LogEntry`). Resultado: todo log do podinfo chega como `severity: INFO`,
+mesmo o da própria mensagem de pânico.
+
+Isso é uma limitação real de depender de log de aplicação como sinal de
+problema: cada app loga do seu jeito, então não é um sinal genérico o
+suficiente para uma plataforma de self-healing que precisa reagir a
+qualquer app. Por isso existe o alerta de `restart_count` — é um sinal do
+**Kubernetes**, não da aplicação, então funciona independente de como cada
+app loga.
 
 ## Por que sem `notification_channels`
 

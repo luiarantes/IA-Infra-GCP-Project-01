@@ -5,3 +5,7 @@ output "log_metric_name" {
 output "alert_policy_name" {
   value = google_monitoring_alert_policy.app_error_rate.name
 }
+
+output "restart_alert_policy_name" {
+  value = google_monitoring_alert_policy.container_restarts.name
+}

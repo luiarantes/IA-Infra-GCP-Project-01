@@ -23,3 +23,9 @@ variable "error_threshold" {
   type        = number
   default     = 0
 }
+
+variable "restart_threshold" {
+  description = "Quantidade de restarts na janela de 5min que dispara o alerta"
+  type        = number
+  default     = 0
+}
