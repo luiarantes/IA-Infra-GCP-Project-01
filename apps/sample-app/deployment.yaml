@@ -1,0 +1,42 @@
+# podinfo: app publica, leve, feita para demos de observabilidade -
+# expoe metricas Prometheus, logs estruturados e endpoints para simular
+# falhas (util nas fases 5-7, quando os agentes de self-healing precisarem
+# de algo "quebravel" para reagir).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: podinfo
+  labels:
+    app: podinfo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: podinfo
+  template:
+    metadata:
+      labels:
+        app: podinfo
+    spec:
+      containers:
+        - name: podinfo
+          image: ghcr.io/stefanprodan/podinfo:6.7.1
+          ports:
+            - name: http
+              containerPort: 9898
+          # GKE Autopilot exige requests explicitos em todo pod
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http

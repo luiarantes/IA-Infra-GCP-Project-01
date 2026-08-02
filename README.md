@@ -27,8 +27,8 @@ que o alerta foi resolvido.
 
 - [x] Fase 0 — Bootstrap (state bucket, Workload Identity Federation)
 - [x] Fase 1 — Infra base (VPC, GKE Autopilot, Artifact Registry, budget alert)
-- [ ] Fase 2 — CI/CD do Terraform validado end-to-end (falta rodar contra um projeto real)
-- [ ] Fase 3 — Deploy do app de teste
+- [x] Fase 2 — CI/CD do Terraform validado end-to-end
+- [ ] Fase 3 — Deploy do app de teste (podinfo)
 - [ ] Fase 4 — Stack de observabilidade
 - [ ] Fase 5 — Agente: log-analyzer → alerta
 - [ ] Fase 6 — Agente: diagnóstico → PR de fix

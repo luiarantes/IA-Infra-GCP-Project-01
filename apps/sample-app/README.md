@@ -1,12 +1,25 @@
-# sample-app (fase 3)
+# sample-app: podinfo (fase 3)
 
-Placeholder para a aplicação de teste que será implantada no GKE.
+Aplicação de teste implantada no cluster via `.github/workflows/deploy-app.yml`.
+Usamos [podinfo](https://github.com/stefanprodan/podinfo) — imagem pública
+já pronta para demos de observabilidade (métricas Prometheus, logs
+estruturados, endpoints que simulam falhas), então não precisamos escrever
+uma aplicação do zero para ter algo "real" no cluster.
 
-Ideia para o MVP: usar uma app já pronta e conhecida para chaos/observability
-(ex. [podinfo](https://github.com/stefanprodan/podinfo)) em vez de escrever
-uma do zero — ela já expõe métricas, logs estruturados e endpoints para
-simular falhas, o que ajuda a testar o loop de self-healing sem precisar
-construir o "alvo" também.
+## Arquivos
 
-Conteúdo desta pasta na fase 3: manifests Kubernetes (ou Helm chart) para
-deploy da app no cluster criado pela fase 1.
+- `deployment.yaml` — 1 réplica, com `resources.requests` explícitos
+  (obrigatório no GKE Autopilot) e probes de readiness/liveness
+- `service.yaml` — `ClusterIP` (não `LoadBalancer`, para não gerar custo
+  de IP público desnecessário)
+
+## Como acessar depois do deploy
+
+```bash
+gcloud container clusters get-credentials aiops-gke --region us-central1 --project ia-infra-gcp-project-01
+kubectl port-forward svc/podinfo 9898:9898
+```
+
+Depois acesse `http://localhost:9898` — o podinfo tem uma UI simples e
+endpoints como `/healthz`, `/readyz`, `/metrics` e `/panic` (simula um
+crash, útil para testar o self-healing nas fases 5-7).

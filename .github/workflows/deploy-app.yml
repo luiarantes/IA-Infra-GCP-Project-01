@@ -1,0 +1,43 @@
+name: Deploy Sample App
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/**"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  CLUSTER_NAME: aiops-gke
+  CLUSTER_LOCATION: us-central1
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      # Autentica o kubectl no cluster GKE usando a mesma identidade WIF -
+      # roles/container.admin (dado no bootstrap) ja cobre acesso de
+      # cluster-admin via IAM, sem precisar de RBAC adicional.
+      - uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ env.CLUSTER_NAME }}
+          location: ${{ env.CLUSTER_LOCATION }}
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Deploy manifests
+        run: kubectl apply -f apps/sample-app/
+
+      - name: Aguardar rollout
+        run: kubectl rollout status deployment/podinfo --timeout=180s
