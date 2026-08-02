@@ -1,0 +1,16 @@
+# Diz ao Google Cloud Managed Service for Prometheus (ja ativo por padrao
+# em clusters GKE Autopilot) para fazer scrape do endpoint /metrics que o
+# podinfo expoe nativamente. Sem isso, o GMP so coleta metricas de sistema
+# (CPU/memoria dos pods), nao as metricas de aplicacao.
+apiVersion: monitoring.googleapis.com/v1
+kind: PodMonitoring
+metadata:
+  name: podinfo
+spec:
+  selector:
+    matchLabels:
+      app: podinfo
+  endpoints:
+    - port: http
+      interval: 30s
+      path: /metrics

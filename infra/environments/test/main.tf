@@ -61,3 +61,12 @@ module "budget" {
 
   depends_on = [google_project_service.apis]
 }
+
+module "observability" {
+  source = "../../modules/observability"
+
+  project_id   = var.project_id
+  cluster_name = var.cluster_name
+
+  depends_on = [module.gke]
+}
