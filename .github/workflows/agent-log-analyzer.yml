@@ -1,0 +1,73 @@
+name: Agent - Log Analyzer
+
+# Fase 5: so roda sob demanda (sem schedule automatico) - decisao
+# deliberada para nao gerar custo continuo de chamadas a API da
+# Anthropic enquanto o projeto ainda esta em fase de teste. O pre-check
+# abaixo tambem evita acionar o Claude quando nao ha nada de errado.
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  id-token: write
+  issues: write
+
+env:
+  CLUSTER_NAME: aiops-gke
+  CLUSTER_LOCATION: us-central1
+  GCP_PROJECT: ${{ secrets.GCP_PROJECT_ID }}
+
+jobs:
+  check-and-analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ env.CLUSTER_NAME }}
+          location: ${{ env.CLUSTER_LOCATION }}
+          project_id: ${{ env.GCP_PROJECT }}
+
+      # Sem IA de proposito: mesma consulta validada manualmente na fase 4
+      # (kubernetes.io/container/restart_count com ALIGN_DELTA). So gasta
+      # tokens de API se encontrar uma variacao real na janela recente.
+      - name: "Pre-check: houve restart recente?"
+        id: precheck
+        run: |
+          END=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          START=$(date -u -d '15 minutes ago' +%Y-%m-%dT%H:%M:%SZ)
+          TOKEN=$(gcloud auth print-access-token)
+          FILTER='metric.type%3D%22kubernetes.io%2Fcontainer%2Frestart_count%22'
+          RESPONSE=$(curl -s -H "Authorization: Bearer ${TOKEN}" \
+            "https://monitoring.googleapis.com/v3/projects/${GCP_PROJECT}/timeSeries?filter=${FILTER}&interval.startTime=${START}&interval.endTime=${END}&aggregation.alignmentPeriod=900s&aggregation.perSeriesAligner=ALIGN_DELTA")
+          MAX_DELTA=$(echo "$RESPONSE" | jq '[.timeSeries[]?.points[]?.value.int64Value // "0" | tonumber] | max // 0')
+          echo "Maior variacao de restart_count na janela: $MAX_DELTA"
+          if [ "$MAX_DELTA" -gt 0 ]; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Instalar Claude Code
+        if: steps.precheck.outputs.found == 'true'
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Investigar com Claude Code
+        if: steps.precheck.outputs.found == 'true'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          claude -p "$(cat agents/log-analyzer/TASK.md)" \
+            --allowedTools "Bash(kubectl get:*)" "Bash(kubectl describe:*)" "Bash(kubectl logs:*)" "Bash(gcloud logging read:*)" "Bash(gcloud monitoring:*)" "Bash(gh issue create:*)" "Bash(gh issue list:*)"
+
+      - name: Nada encontrado no pre-check
+        if: steps.precheck.outputs.found == 'false'
+        run: echo "Nenhum restart recente - Claude Code nao foi acionado, sem custo de API."

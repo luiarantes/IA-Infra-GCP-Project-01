@@ -50,6 +50,7 @@ que o alerta foi resolvido.
 
 **Anthropic (a partir da fase 5):**
 - [ ] API key da Anthropic, como secret no GitHub (`ANTHROPIC_API_KEY`)
+- [ ] Node.js já vem instalado nos runners `ubuntu-latest` do GitHub Actions — necessário para o `npm install -g @anthropic-ai/claude-code`, não precisa instalar nada extra
 
 ## Como rodar o bootstrap (uma única vez)
 
@@ -119,6 +120,30 @@ kubectl port-forward svc/podinfo 9898:9898
 
 Abra `http://localhost:9898` no navegador. `Ctrl+C` no terminal encerra o
 túnel quando terminar.
+
+## Como testar o agente log-analyzer (fase 5)
+
+O agente roda só sob demanda (`workflow_dispatch`), sem schedule
+automático, para não gerar custo recorrente de API enquanto o projeto
+está em teste. Antes de rodar, configure o secret `ANTHROPIC_API_KEY` no
+GitHub. Para testar:
+
+```bash
+# 1. gera um crash de proposito no sample-app (ver observability/README.md)
+kubectl port-forward svc/podinfo 9898:9898 &
+curl http://localhost:9898/panic
+
+# 2. dispara o agente
+gh workflow run agent-log-analyzer.yml
+
+# 3. acompanha
+gh run watch
+```
+
+Se não houver restart recente, o job encerra rápido no pre-check (sem
+chamar a API da Anthropic). Se encontrar algo, o Claude Code investiga e
+abre uma GitHub Issue com o diagnóstico. Detalhes de arquitetura em
+[`agents/log-analyzer/README.md`](agents/log-analyzer/README.md).
 
 ## Padrões seguidos neste repositório
 
