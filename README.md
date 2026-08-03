@@ -33,6 +33,7 @@ que o alerta foi resolvido.
 - [x] Fase 5 — Agente: log-analyzer → alerta (validado com crash real, issue #2)
 - [x] Fase 6 — Agente: diagnóstico → PR de fix (validado — decidiu corretamente não abrir PR, issue #3)
 - [x] Fase 7 — Loop completo de self-healing + failsafe de custo (ambas as partes validadas com PR real mergeado e mensagem sintética de orçamento)
+- [ ] Fase 8 — Microsserviços reais, tracing distribuído e teste de carga (planejamento em [`docs/fase8-plano.md`](docs/fase8-plano.md), ainda não implementada)
 
 ## Pré-requisitos antes de usar
 
