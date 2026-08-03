@@ -23,3 +23,7 @@ service-account*.json
 .DS_Store
 .vscode/
 .idea/
+
+# Notas pessoais de estudo - nunca vao pro repo publico, mas ficam
+# sincronizadas no Drive pra acesso em sessoes/chats futuros
+/notas-privadas/
