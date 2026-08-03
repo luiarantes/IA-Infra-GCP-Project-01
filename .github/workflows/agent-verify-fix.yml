@@ -62,6 +62,10 @@ jobs:
         if: steps.extract.outputs.issue_number != ''
         env:
           GH_TOKEN: ${{ github.token }}
+          # gh precisa disso porque este job nao faz checkout do
+          # repositorio - mesmo bug ja visto e corrigido no
+          # cost-failsafe.yml (fase 7b), só esqueci de aplicar aqui tambem
+          GH_REPO: ${{ github.repository }}
         run: |
           ISSUE="${{ steps.extract.outputs.issue_number }}"
           PR="${{ github.event.pull_request.number }}"
