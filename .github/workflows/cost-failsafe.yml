@@ -54,6 +54,10 @@ jobs:
         if: fromJSON(steps.pull.outputs.ratio) >= 1
         env:
           GH_TOKEN: ${{ github.token }}
+          # gh precisa disso porque este job nao faz checkout do
+          # repositorio (nao ha necessidade, so consulta orcamento) -
+          # sem um .git local, o gh nao tem como inferir o repo alvo
+          GH_REPO: ${{ github.repository }}
         run: |
           gh label create cost-failsafe --color B60205 --description "Acionado pelo failsafe de custo" 2>/dev/null || true
           gh issue create \
