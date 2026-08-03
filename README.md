@@ -31,8 +31,8 @@ que o alerta foi resolvido.
 - [x] Fase 3 — Deploy do app de teste (podinfo)
 - [x] Fase 4 — Stack de observabilidade (métrica de erro, alerta, Managed Prometheus)
 - [x] Fase 5 — Agente: log-analyzer → alerta (validado com crash real, issue #2)
-- [ ] Fase 6 — Agente: diagnóstico → PR de fix
-- [ ] Fase 7 — Loop de self-healing com aprovação humana + failsafe de custo
+- [x] Fase 6 — Agente: diagnóstico → PR de fix (validado — decidiu corretamente não abrir PR, issue #3)
+- [ ] Fase 7 — Loop de self-healing (verificação pós-merge) + failsafe de custo (implementado, aguardando teste)
 
 ## Pré-requisitos antes de usar
 
@@ -157,10 +157,33 @@ gh run list --workflow=agent-pr-creator.yml
 ```
 
 O agente lê a issue, decide se existe um fix de código razoável, e ou
-abre um PR (`Closes #N` no corpo) ou comenta na issue explicando por que
-nenhuma mudança é necessária. Ele só pode editar arquivos em `apps/` e
-`observability/` — nunca aplica nada diretamente. Detalhes de arquitetura
-em [`agents/pr-creator/README.md`](agents/pr-creator/README.md).
+abre um PR com o label `agent-fix` (`Closes #N` no corpo) ou comenta na
+issue explicando por que nenhuma mudança é necessária. Ele só pode editar
+arquivos em `apps/` e `observability/` — nunca aplica nada diretamente.
+Detalhes de arquitetura em [`agents/pr-creator/README.md`](agents/pr-creator/README.md).
+
+## Fase 7: fechando o loop + failsafe de custo
+
+**Verificação pós-merge** (`agent-verify-fix.yml`): quando um PR rotulado
+`agent-fix` é mergeado, o `deploy-app.yml` já existente aplica a mudança
+automaticamente (nada novo aqui). Esse workflow espera alguns minutos e
+reconsulta a métrica de `restart_count` — se parou de subir, comenta
+confirmando na issue (que o GitHub já fechou via `Closes #N`); se
+continuar, **reabre a issue** para investigação humana. Sem Claude — é
+uma checagem mecânica, não um julgamento. Detalhes em
+[`agents/verify-fix/README.md`](agents/verify-fix/README.md).
+
+**Failsafe de custo** (`cost-failsafe.yml`): roda a cada 30 minutos, puxa
+mensagens do tópico `budget-alerts` (Pub/Sub, via `gcloud pubsub
+subscriptions pull` com a mesma identidade WIF — sem Cloud Function, sem
+credencial nova) e, se o gasto atingir 100% do orçamento configurado,
+**dispara o `terraform-destroy.yml` automaticamente**, sem esperar
+confirmação humana — abre uma issue com o label `cost-failsafe` para
+deixar registrado o que aconteceu. Para testar manualmente:
+
+```bash
+gh workflow run cost-failsafe.yml
+```
 
 ## Padrões seguidos neste repositório
 
@@ -169,4 +192,6 @@ em [`agents/pr-creator/README.md`](agents/pr-creator/README.md).
 - **Least privilege**: autenticação do CI via Workload Identity Federation,
   sem chaves JSON estáticas
 - **Human-in-the-loop**: PRs de self-healing (fases 6-7) sempre exigem
-  aprovação humana antes do merge
+  aprovação humana antes do merge — a única exceção deliberada é o
+  failsafe de custo, que destrói automaticamente por definição (é o
+  próprio propósito dele)

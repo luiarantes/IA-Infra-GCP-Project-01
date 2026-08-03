@@ -42,4 +42,4 @@ jobs:
         run: |
           TASK=$(sed "s/\${ISSUE_NUMBER}/${ISSUE_NUMBER}/g" agents/pr-creator/TASK.md)
           claude -p "$TASK" \
-            --allowedTools "Bash(gh issue view:*)" "Bash(gh issue comment:*)" "Bash(git checkout:*)" "Bash(git add:*)" "Bash(git commit:*)" "Bash(git push:*)" "Bash(gh pr create:*)" "Read" "Edit(apps/**)" "Write(apps/**)" "Edit(observability/**)" "Write(observability/**)"
+            --allowedTools "Bash(gh issue view:*)" "Bash(gh issue comment:*)" "Bash(git checkout:*)" "Bash(git add:*)" "Bash(git commit:*)" "Bash(git push:*)" "Bash(gh pr create:*)" "Bash(gh label create:*)" "Read" "Edit(apps/**)" "Write(apps/**)" "Edit(observability/**)" "Write(observability/**)"

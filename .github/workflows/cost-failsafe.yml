@@ -1,0 +1,63 @@
+name: Cost Failsafe
+
+# Fase 7 (parte B): monitora o topico de orcamento (criado pelo modulo
+# infra/modules/budget) e dispara um destroy automatico se o gasto
+# atingir 100% do orcamento configurado.
+#
+# Poll a cada 30min via GitHub Actions, puxando (pull, nao push) do
+# Pub/Sub usando a mesma identidade WIF do resto do projeto - de
+# proposito, para nao precisar de uma Cloud Function nem de nenhuma
+# credencial nova armazenada (o padrao "zero standing credentials" do
+# projeto continua valendo aqui).
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  id-token: write
+  actions: write
+  issues: write
+
+env:
+  GCP_PROJECT: ${{ secrets.GCP_PROJECT_ID }}
+
+jobs:
+  check-budget:
+    runs-on: ubuntu-latest
+    steps:
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Puxar mensagens do topico de orcamento
+        id: pull
+        run: |
+          gcloud pubsub subscriptions pull budget-alerts-failsafe-pull \
+            --auto-ack --limit=20 --format=json \
+            --project="${GCP_PROJECT}" > /tmp/pubsub_messages.json
+
+          RATIO=$(jq -r '
+            [.[]?.message.data // empty]
+            | map(@base64d | fromjson)
+            | map(((.costAmount // 0) / (.budgetAmount // 1)))
+            | max // 0
+          ' /tmp/pubsub_messages.json)
+
+          echo "Maior razao custo/orcamento encontrada nas mensagens: $RATIO"
+          echo "ratio=${RATIO}" >> "$GITHUB_OUTPUT"
+
+      - name: Disparar destroy automatico (orcamento atingido)
+        if: fromJSON(steps.pull.outputs.ratio) >= 1
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh label create cost-failsafe --color B60205 --description "Acionado pelo failsafe de custo" 2>/dev/null || true
+          gh issue create \
+            --title "FAILSAFE: orcamento atingido, destroy automatico disparado" \
+            --body "O gasto atingiu ${{ steps.pull.outputs.ratio }}x a proporção custo/orçamento configurada. O workflow terraform-destroy.yml foi disparado automaticamente para evitar gasto adicional." \
+            --label cost-failsafe
+          gh workflow run terraform-destroy.yml -f confirm=destroy

@@ -30,7 +30,11 @@ A issue #${ISSUE_NUMBER} foi aberta por um agente de observabilidade
    - Faça a alteração mínima necessária no(s) arquivo(s) relevante(s)
    - `git add`, `git commit` (mensagem curta explicando o quê e por quê),
      `git push`
-   - Abra o PR com `gh pr create`, incluindo no corpo:
+   - Abra o PR com **`gh pr create --label agent-fix`** (o label é
+     obrigatório — é o que aciona a verificação pós-merge, na fase
+     seguinte). Se o label não existir, rode
+     `gh label create agent-fix --color 0E8A16 --description "Fix proposto por agente"`
+     e tente de novo. No corpo do PR, inclua:
      - `Closes #${ISSUE_NUMBER}`
      - O que foi observado (resuma da issue)
      - O que a mudança faz e por que deveria ajudar

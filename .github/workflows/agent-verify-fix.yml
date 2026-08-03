@@ -1,0 +1,73 @@
+name: Agent - Verify Fix
+
+# Fase 7 (parte A): dispara quando um PR do agente (label "agent-fix") e
+# mergeado. Espera o deploy-app.yml aplicar a mudanca, depois reconsulta
+# a mesma metrica de restart_count usada nas fases 5/6 para confirmar se
+# o problema parou.
+#
+# Sem Claude de proposito: isso e' uma checagem mecanica (comparar um
+# numero antes/depois), nao um julgamento - nem toda etapa de um sistema
+# de IA precisa chamar um LLM.
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: read
+  id-token: write
+  issues: write
+
+env:
+  GCP_PROJECT: ${{ secrets.GCP_PROJECT_ID }}
+
+jobs:
+  verify:
+    if: github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'agent-fix')
+    runs-on: ubuntu-latest
+    steps:
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Extrair numero da issue a partir do nome da branch
+        id: extract
+        run: |
+          BRANCH="${{ github.event.pull_request.head.ref }}"
+          ISSUE_NUMBER=$(echo "$BRANCH" | grep -oE '[0-9]+$' || true)
+          echo "issue_number=${ISSUE_NUMBER}" >> "$GITHUB_OUTPUT"
+
+      # Espera o deploy-app.yml (disparado pelo mesmo merge) terminar de
+      # aplicar a mudanca antes de checar se o problema parou.
+      - name: Aguardar o deploy da correcao
+        if: steps.extract.outputs.issue_number != ''
+        run: sleep 300
+
+      - name: Reconsultar restart_count pos-deploy
+        id: check
+        if: steps.extract.outputs.issue_number != ''
+        run: |
+          END=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          START=$(date -u -d '5 minutes ago' +%Y-%m-%dT%H:%M:%SZ)
+          TOKEN=$(gcloud auth print-access-token)
+          FILTER='metric.type%3D%22kubernetes.io%2Fcontainer%2Frestart_count%22'
+          RESPONSE=$(curl -s -H "Authorization: Bearer ${TOKEN}" \
+            "https://monitoring.googleapis.com/v3/projects/${GCP_PROJECT}/timeSeries?filter=${FILTER}&interval.startTime=${START}&interval.endTime=${END}&aggregation.alignmentPeriod=300s&aggregation.perSeriesAligner=ALIGN_DELTA")
+          MAX_DELTA=$(echo "$RESPONSE" | jq '[.timeSeries[]?.points[]?.value.int64Value // "0" | tonumber] | max // 0')
+          echo "Variacao de restart_count pos-deploy: $MAX_DELTA"
+          echo "max_delta=${MAX_DELTA}" >> "$GITHUB_OUTPUT"
+
+      - name: Comentar resultado na issue original
+        if: steps.extract.outputs.issue_number != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ISSUE="${{ steps.extract.outputs.issue_number }}"
+          PR="${{ github.event.pull_request.number }}"
+          if [ "${{ steps.check.outputs.max_delta }}" = "0" ]; then
+            gh issue comment "$ISSUE" --body "**Verificação automática pós-merge**: nenhum restart novo detectado nos 5 minutos após o deploy do PR #${PR}. A correção parece ter resolvido o problema."
+          else
+            gh issue comment "$ISSUE" --body "**Verificação automática pós-merge**: ainda foram detectados restarts após o deploy do PR #${PR} — o problema pode não ter sido totalmente resolvido. Reabrindo para investigação humana."
+            gh issue reopen "$ISSUE"
+          fi

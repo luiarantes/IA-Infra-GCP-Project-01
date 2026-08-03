@@ -1,10 +1,25 @@
-# Topico usado para publicar notificacoes de orcamento; e a base para,
-# futuramente, acionar uma Cloud Function que forca um destroy automatico
-# se o gasto ultrapassar um limite critico (fase 7 do roadmap).
+# Topico usado para publicar notificacoes de orcamento.
 resource "google_pubsub_topic" "budget_alerts" {
   count   = var.enable_budget_alert ? 1 : 0
   project = var.project_id
   name    = "budget-alerts"
+}
+
+# Subscription pull (nao push) - o workflow de failsafe de custo (fase 7)
+# le mensagens daqui periodicamente via GitHub Actions, usando a mesma
+# identidade WIF do resto do projeto. Deliberadamente pull em vez de push
+# para nao precisar de uma Cloud Function nem de credencial nova
+# (o GitHub Actions ja tem acesso via WIF, ninguem "empurra" nada pra ele).
+resource "google_pubsub_subscription" "budget_alerts_pull" {
+  count   = var.enable_budget_alert ? 1 : 0
+  project = var.project_id
+  name    = "budget-alerts-failsafe-pull"
+  topic   = google_pubsub_topic.budget_alerts[0].id
+
+  # Mensagens de orcamento nao sao urgentes por natureza - retencao
+  # generosa e ack_deadline curto (o workflow so precisa ler e decidir)
+  message_retention_duration = "1200s"
+  ack_deadline_seconds       = 30
 }
 
 # Requer que a service account do Terraform tenha roles/billing.costsManager
