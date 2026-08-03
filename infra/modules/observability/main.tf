@@ -26,6 +26,17 @@ resource "google_logging_metric" "app_errors" {
   }
 }
 
+# Espera de propagacao: a API do Monitoring pode demorar ate alguns
+# minutos para "enxergar" uma metrica de log recem-criada (a propria
+# mensagem de erro do Google avisa isso). Sem essa espera, criar a
+# alert_policy logo em seguida falha de forma intermitente com
+# "Cannot find metric(s) that match type = ...".
+resource "time_sleep" "wait_for_metric_propagation" {
+  create_duration = "90s"
+
+  depends_on = [google_logging_metric.app_errors]
+}
+
 # Alerta quando a taxa de erro passa do limite numa janela de 5 minutos.
 # Sem notification_channels de proposito no MVP - o objetivo aqui e o
 # agente de IA (fase 5) consultar essa politica via API, nao mandar email.
@@ -53,6 +64,8 @@ resource "google_monitoring_alert_policy" "app_error_rate" {
   alert_strategy {
     auto_close = "1800s"
   }
+
+  depends_on = [time_sleep.wait_for_metric_propagation]
 }
 
 # Alerta baseado em sinal de plataforma (nao de aplicacao): dispara sempre
