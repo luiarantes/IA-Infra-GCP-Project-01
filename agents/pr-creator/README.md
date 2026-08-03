@@ -7,12 +7,19 @@ Aprovação humana + merge + apply automatizado ficam para a fase 7.
 
 ## Decisões de arquitetura
 
-**Gatilho: automático, ao rotular a issue** (`on: issues: types:
-[labeled]`, filtrado por `agent-finding`). Isso encadeia com a fase 5 sem
-custo de polling — só roda quando existe um diagnóstico real (a fase 5
-por sua vez só roda o Claude quando o pre-check encontra algo). O
-resultado é uma cadeia "crash → issue → PR" totalmente orientada a
-eventos reais, nunca a um relógio.
+**Gatilho: automático, ao existir uma issue com o label `agent-finding`**
+(`on: issues: types: [opened, labeled]`, filtrado checando se o label
+está presente em `github.event.issue.labels`). Isso encadeia com a fase 5
+sem custo de polling — só roda quando existe um diagnóstico real.
+
+Detalhe não óbvio descoberto testando: o GitHub **não** dispara o evento
+`labeled` quando o label é aplicado já na criação da issue (como a fase 5
+faz, via `gh issue create --label agent-finding`) — só dispara `opened`.
+`labeled` só ocorre quando um label é adicionado a uma issue *já
+existente*, numa chamada separada. Por isso o trigger cobre os dois tipos
+de evento (`opened` e `labeled`) e checa a lista de labels diretamente,
+em vez de depender de `github.event.label.name` (que só existe no evento
+`labeled`).
 
 **Pode decidir não fazer nada.** Nem todo diagnóstico tem uma correção de
 código sensata (o nosso caso de teste — alguém chamando `/panic` de

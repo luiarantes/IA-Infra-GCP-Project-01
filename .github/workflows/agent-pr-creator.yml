@@ -1,11 +1,16 @@
 name: Agent - PR Creator
 
-# Fase 6: dispara automaticamente quando a fase 5 rotula uma issue com
+# Fase 6: dispara automaticamente quando existe uma issue com o label
 # "agent-finding" - encadeia sem custo de polling, ja que so existe uma
 # issue dessas quando o pre-check da fase 5 encontrou um problema real.
+#
+# "opened" cobre o caso da fase 5 (gh issue create --label ...) - quando
+# o label vem junto na criacao, o GitHub NAO dispara um evento "labeled"
+# separado, so "opened". "labeled" cobre o caso de alguem adicionar o
+# label manualmente numa issue ja existente depois.
 on:
   issues:
-    types: [labeled]
+    types: [opened, labeled]
 
 permissions:
   contents: write
@@ -14,7 +19,7 @@ permissions:
 
 jobs:
   propose-fix:
-    if: github.event.label.name == 'agent-finding'
+    if: contains(github.event.issue.labels.*.name, 'agent-finding')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
