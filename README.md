@@ -32,8 +32,7 @@ que o alerta foi resolvido.
 - [x] Fase 4 — Stack de observabilidade (restart, CPU, memória, erros 5xx, latência — validado com incidente real multi-sinal)
 - [x] Fase 5 — Agente: log-analyzer → alerta (validado com crash real, issue #2)
 - [x] Fase 6 — Agente: diagnóstico → PR de fix (validado — decidiu corretamente não abrir PR, issue #3)
-- [x] Fase 7b — Failsafe de custo (validado com mensagem sintética — detectou, criou issue #4, disparou destroy real)
-- [ ] Fase 7a — Verificação pós-merge (implementada, aguardando um PR `agent-fix` real mergeado para testar)
+- [x] Fase 7 — Loop completo de self-healing + failsafe de custo (ambas as partes validadas com PR real mergeado e mensagem sintética de orçamento)
 
 ## Pré-requisitos antes de usar
 
