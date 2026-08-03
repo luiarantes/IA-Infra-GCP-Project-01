@@ -23,6 +23,15 @@ self-hosted, para não gerar custo extra de compute.
   métrica nativa do GKE `kubernetes.io/container/restart_count`, dispara
   sempre que um container reinicia. Ver "Limitação real encontrada" abaixo
   — este é o alerta que de fato funciona com o podinfo.
+- **Alertas de CPU e memória**: baseados nas métricas nativas do GKE
+  `kubernetes.io/container/cpu/limit_utilization` e `.../memory/limit_utilization`
+  — já vêm normalizadas (0.0–1.0) relativas ao `resources.limits`
+  configurado no deployment, sem precisar calcular razão nenhuma.
+- **Alertas de erros 5xx e latência**: usam `condition_prometheus_query_language`
+  (PromQL direto no Cloud Monitoring) sobre as métricas que o próprio
+  podinfo expõe em `/metrics` (`http_requests_total`,
+  `http_request_duration_seconds`), coletadas via o `PodMonitoring` já
+  citado acima.
 
 ## Limitação real encontrada (testada em 2026-08-01)
 
@@ -59,5 +68,33 @@ gcloud logging read 'resource.type="k8s_container" resource.labels.namespace_nam
 gcloud alpha monitoring policies list --format="table(displayName,enabled)"
 ```
 
-Para gerar um erro de teste, o podinfo tem um endpoint que simula falha:
-`kubectl port-forward svc/podinfo 9898:9898` e depois `curl -X POST http://localhost:9898/panic`.
+## Como provocar cada tipo de incidente (para testar os agentes)
+
+Com `kubectl port-forward svc/podinfo 9898:9898` rodando em outro terminal:
+
+```bash
+# restart (crash deliberado) - repare que e' GET, nao POST
+curl http://localhost:9898/panic
+
+# erro 5xx
+curl http://localhost:9898/status/500
+
+# latencia alta (simula uma resposta lenta, em segundos)
+curl http://localhost:9898/delay/3
+```
+
+CPU/memória altos não têm um endpoint dedicado no podinfo — a forma mais
+simples de provocar é gerar bastante carga concorrente contra qualquer
+endpoint (ex: várias chamadas em paralelo a `/delay/1`) enquanto os
+`resources.limits` do `apps/sample-app/deployment.yaml` estão
+propositalmente baixos.
+
+## Consultar as métricas do podinfo diretamente
+
+Sem precisar de porta-forward nem de credenciais adicionais (usa o proxy
+já embutido na API do Kubernetes):
+
+```bash
+POD=$(kubectl get pods -l app=podinfo -o jsonpath='{.items[0].metadata.name}')
+kubectl get --raw "/api/v1/namespaces/default/pods/${POD}:9898/proxy/metrics"
+```

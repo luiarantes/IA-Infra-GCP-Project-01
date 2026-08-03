@@ -35,25 +35,64 @@ jobs:
           location: ${{ env.CLUSTER_LOCATION }}
           project_id: ${{ env.GCP_PROJECT }}
 
-      # Sem IA de proposito: mesma consulta validada manualmente na fase 4
-      # (kubernetes.io/container/restart_count com ALIGN_DELTA). So gasta
-      # tokens de API se encontrar uma variacao real na janela recente.
-      - name: "Pre-check: houve restart recente?"
+      # Sem IA de proposito: consulta direta as metricas, mesma tecnica
+      # validada manualmente na fase 4. So gasta tokens de API se
+      # encontrar algum sinal real na janela recente. Cobre os 5 tipos
+      # de incidente que os alertas da fase 4/7 monitoram: restart,
+      # CPU, memoria, erros 5xx e latencia.
+      - name: "Pre-check: algum sinal de problema?"
         id: precheck
         run: |
           END=$(date -u +%Y-%m-%dT%H:%M:%SZ)
           START=$(date -u -d '15 minutes ago' +%Y-%m-%dT%H:%M:%SZ)
           TOKEN=$(gcloud auth print-access-token)
-          FILTER='metric.type%3D%22kubernetes.io%2Fcontainer%2Frestart_count%22'
-          RESPONSE=$(curl -s -H "Authorization: Bearer ${TOKEN}" \
-            "https://monitoring.googleapis.com/v3/projects/${GCP_PROJECT}/timeSeries?filter=${FILTER}&interval.startTime=${START}&interval.endTime=${END}&aggregation.alignmentPeriod=900s&aggregation.perSeriesAligner=ALIGN_DELTA")
-          MAX_DELTA=$(echo "$RESPONSE" | jq '[.timeSeries[]?.points[]?.value.int64Value // "0" | tonumber] | max // 0')
-          echo "Maior variacao de restart_count na janela: $MAX_DELTA"
-          if [ "$MAX_DELTA" -gt 0 ]; then
-            echo "found=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "found=false" >> "$GITHUB_OUTPUT"
-          fi
+          FOUND=false
+          SIGNALS=""
+
+          is_gt() { awk -v a="$1" -v b="$2" 'BEGIN{exit !(a>b)}'; }
+
+          # Metricas classicas do Cloud Monitoring (timeSeries.list) -
+          # cobre restart_count, cpu e memoria.
+          check_classic_metric() {
+            local metric_type="$1"
+            local aligner="$2"
+            local filter="metric.type%3D%22${metric_type}%22"
+            curl -s -H "Authorization: Bearer ${TOKEN}" \
+              "https://monitoring.googleapis.com/v3/projects/${GCP_PROJECT}/timeSeries?filter=${filter}&interval.startTime=${START}&interval.endTime=${END}&aggregation.alignmentPeriod=900s&aggregation.perSeriesAligner=${aligner}" \
+              | jq '[.timeSeries[]?.points[]?.value | (.int64Value // .doubleValue // "0") | tonumber] | max // 0'
+          }
+
+          RESTART_DELTA=$(check_classic_metric "kubernetes.io%2Fcontainer%2Frestart_count" "ALIGN_DELTA")
+          echo "restart_count (variacao na janela): $RESTART_DELTA"
+          if is_gt "$RESTART_DELTA" 0; then FOUND=true; SIGNALS="${SIGNALS}restart_count "; fi
+
+          CPU_MAX=$(check_classic_metric "kubernetes.io%2Fcontainer%2Fcpu%2Flimit_utilization" "ALIGN_MEAN")
+          echo "cpu limit_utilization (max): $CPU_MAX"
+          if is_gt "$CPU_MAX" 0.8; then FOUND=true; SIGNALS="${SIGNALS}cpu "; fi
+
+          MEM_MAX=$(check_classic_metric "kubernetes.io%2Fcontainer%2Fmemory%2Flimit_utilization" "ALIGN_MEAN")
+          echo "memory limit_utilization (max): $MEM_MAX"
+          if is_gt "$MEM_MAX" 0.8; then FOUND=true; SIGNALS="${SIGNALS}memory "; fi
+
+          # Metricas do podinfo (via Managed Prometheus) usam a API
+          # compativel com PromQL - endpoint diferente do timeSeries.list.
+          query_promql() {
+            curl -s -G -H "Authorization: Bearer ${TOKEN}" \
+              --data-urlencode "query=$1" \
+              "https://monitoring.googleapis.com/v1/projects/${GCP_PROJECT}/location/global/prometheus/api/v1/query" \
+              | jq -r '.data.result[0].value[1] // "0"'
+          }
+
+          FIVEXX_RATE=$(query_promql 'sum(rate(http_requests_total{status=~"5.."}[5m]))')
+          echo "taxa de erros 5xx: $FIVEXX_RATE"
+          if is_gt "$FIVEXX_RATE" 0; then FOUND=true; SIGNALS="${SIGNALS}http_5xx "; fi
+
+          LATENCY_P95=$(query_promql 'histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))')
+          echo "latencia p95 (segundos): $LATENCY_P95"
+          if is_gt "$LATENCY_P95" 1; then FOUND=true; SIGNALS="${SIGNALS}latency "; fi
+
+          echo "found=${FOUND}" >> "$GITHUB_OUTPUT"
+          echo "signals=${SIGNALS}" >> "$GITHUB_OUTPUT"
 
       - name: Instalar Claude Code
         if: steps.precheck.outputs.found == 'true'
@@ -64,10 +103,14 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GH_TOKEN: ${{ github.token }}
+          SIGNALS_FOUND: ${{ steps.precheck.outputs.signals }}
         run: |
-          claude -p "$(cat agents/log-analyzer/TASK.md)" \
-            --allowedTools "Bash(kubectl get:*)" "Bash(kubectl describe:*)" "Bash(kubectl logs:*)" "Bash(gcloud logging read:*)" "Bash(gcloud monitoring:*)" "Bash(gh issue create:*)" "Bash(gh issue list:*)" "Bash(gh label create:*)"
+          TASK="$(cat agents/log-analyzer/TASK.md)
+
+          O pre-check encontrou sinal(is) de problema em: ${SIGNALS_FOUND}"
+          claude -p "$TASK" \
+            --allowedTools "Bash(kubectl get:*)" "Bash(kubectl describe:*)" "Bash(kubectl logs:*)" "Bash(kubectl top:*)" "Bash(gcloud logging read:*)" "Bash(gcloud monitoring:*)" "Bash(gh issue create:*)" "Bash(gh issue list:*)" "Bash(gh label create:*)"
 
       - name: Nada encontrado no pre-check
         if: steps.precheck.outputs.found == 'false'
-        run: echo "Nenhum restart recente - Claude Code nao foi acionado, sem custo de API."
+        run: echo "Nenhum sinal de problema recente - Claude Code nao foi acionado, sem custo de API."

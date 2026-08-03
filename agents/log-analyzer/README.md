@@ -10,11 +10,14 @@ propósito para não gerar custo recorrente de chamadas à API da Anthropic
 enquanto o projeto ainda está em fase de teste. Migrar para `schedule:`
 (ex: a cada 30 min) é trivial depois, se fizer sentido.
 
-**Pre-check sem IA antes de acionar o Claude.** O workflow primeiro
-consulta a métrica `kubernetes.io/container/restart_count` diretamente
-(mesma consulta validada manualmente na fase 4) e só invoca o Claude Code
-se encontrar uma variação recente. Isso evita gastar tokens de API em
-execuções onde não há nada de errado.
+**Pre-check sem IA antes de acionar o Claude.** O workflow consulta 5
+métricas diretamente — `restart_count`, `cpu`/`memory` (limit_utilization,
+via a API clássica do Cloud Monitoring) e `http_5xx`/`latency` (via a API
+compatível com PromQL, já que essas vêm do Managed Prometheus) — e só
+invoca o Claude Code se alguma delas mostrar um valor fora do esperado.
+Isso evita gastar tokens de API em execuções onde não há nada de errado,
+e informa ao Claude quais categorias foram sinalizadas, para direcionar a
+investigação.
 
 **Implementação via Claude Code headless, não um script + chamada direta
 à API.** O workflow instala o Claude Code CLI e roda em modo `-p` (print,

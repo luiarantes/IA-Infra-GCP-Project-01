@@ -99,3 +99,111 @@ resource "google_monitoring_alert_policy" "container_restarts" {
     auto_close = "1800s"
   }
 }
+
+# ---------------------------------------------------------------------
+# Alertas adicionais: CPU/memoria alta (metricas nativas do GKE) e
+# erros 5xx / latencia (metricas do proprio podinfo, coletadas via
+# Managed Prometheus - ver observability/podmonitoring.yaml).
+# ---------------------------------------------------------------------
+
+# CPU alta: "limit_utilization" ja vem normalizado (0.0-1.0) pela propria
+# GCP, relativo ao resources.limits.cpu do deployment - nao precisa
+# calcular a razao manualmente.
+resource "google_monitoring_alert_policy" "high_cpu" {
+  project      = var.project_id
+  display_name = "${var.app_label}: uso de CPU elevado"
+  combiner     = "OR"
+
+  conditions {
+    display_name = "CPU acima do limite configurado"
+
+    condition_threshold {
+      filter          = "resource.type=\"k8s_container\" AND resource.labels.cluster_name=\"${var.cluster_name}\" AND resource.labels.namespace_name=\"${var.namespace}\" AND metric.type=\"kubernetes.io/container/cpu/limit_utilization\""
+      comparison      = "COMPARISON_GT"
+      threshold_value = var.cpu_utilization_threshold
+      duration        = "60s"
+
+      aggregations {
+        alignment_period   = "60s"
+        per_series_aligner = "ALIGN_MEAN"
+      }
+    }
+  }
+
+  alert_strategy {
+    auto_close = "1800s"
+  }
+}
+
+# Memoria alta: mesmo raciocinio do CPU, metrica nativa ja normalizada.
+resource "google_monitoring_alert_policy" "high_memory" {
+  project      = var.project_id
+  display_name = "${var.app_label}: uso de memoria elevado"
+  combiner     = "OR"
+
+  conditions {
+    display_name = "Memoria acima do limite configurado"
+
+    condition_threshold {
+      filter          = "resource.type=\"k8s_container\" AND resource.labels.cluster_name=\"${var.cluster_name}\" AND resource.labels.namespace_name=\"${var.namespace}\" AND metric.type=\"kubernetes.io/container/memory/limit_utilization\""
+      comparison      = "COMPARISON_GT"
+      threshold_value = var.memory_utilization_threshold
+      duration        = "60s"
+
+      aggregations {
+        alignment_period   = "60s"
+        per_series_aligner = "ALIGN_MEAN"
+      }
+    }
+  }
+
+  alert_strategy {
+    auto_close = "1800s"
+  }
+}
+
+# Taxa de erros 5xx: usa PromQL diretamente sobre a metrica que o
+# podinfo ja expoe (http_requests_total, coletada via PodMonitoring).
+# Tipo de condicao diferente dos anteriores (condition_prometheus_query_language,
+# nao condition_threshold) - ainda nao testado neste projeto, e' o ponto
+# mais provavel de precisar ajuste.
+resource "google_monitoring_alert_policy" "http_5xx_errors" {
+  project      = var.project_id
+  display_name = "${var.app_label}: taxa de erros 5xx"
+  combiner     = "OR"
+
+  conditions {
+    display_name = "erros 5xx nos ultimos 5 minutos"
+
+    condition_prometheus_query_language {
+      query    = "sum(rate(http_requests_total{status=~\"5..\"}[5m])) > ${var.http_5xx_rate_threshold}"
+      duration = "60s"
+    }
+  }
+
+  alert_strategy {
+    auto_close = "1800s"
+  }
+}
+
+# Latencia p95: histogram_quantile precisa de PromQL de verdade - nao da
+# pra fazer isso com condition_threshold comum sobre as buckets do
+# histograma.
+resource "google_monitoring_alert_policy" "high_latency" {
+  project      = var.project_id
+  display_name = "${var.app_label}: latencia p95 elevada"
+  combiner     = "OR"
+
+  conditions {
+    display_name = "p95 de latencia acima do limite"
+
+    condition_prometheus_query_language {
+      query    = "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)) > ${var.latency_p95_threshold_seconds}"
+      duration = "60s"
+    }
+  }
+
+  alert_strategy {
+    auto_close = "1800s"
+  }
+}

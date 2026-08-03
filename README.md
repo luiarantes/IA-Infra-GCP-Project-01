@@ -32,7 +32,8 @@ que o alerta foi resolvido.
 - [x] Fase 4 — Stack de observabilidade (métrica de erro, alerta, Managed Prometheus)
 - [x] Fase 5 — Agente: log-analyzer → alerta (validado com crash real, issue #2)
 - [x] Fase 6 — Agente: diagnóstico → PR de fix (validado — decidiu corretamente não abrir PR, issue #3)
-- [ ] Fase 7 — Loop de self-healing (verificação pós-merge) + failsafe de custo (implementado, aguardando teste)
+- [x] Fase 7b — Failsafe de custo (validado com mensagem sintética — detectou, criou issue #4, disparou destroy real)
+- [ ] Fase 7a — Verificação pós-merge (implementada, aguardando um PR `agent-fix` real mergeado para testar)
 
 ## Pré-requisitos antes de usar
 
@@ -125,11 +126,14 @@ túnel quando terminar.
 
 O agente roda só sob demanda (`workflow_dispatch`), sem schedule
 automático, para não gerar custo recorrente de API enquanto o projeto
-está em teste. Antes de rodar, configure o secret `ANTHROPIC_API_KEY` no
-GitHub. Para testar:
+está em teste. O pre-check cobre 5 sinais: restart de container, CPU alta,
+memória alta, erros 5xx e latência elevada — ver
+[`observability/README.md`](observability/README.md#como-provocar-cada-tipo-de-incidente-para-testar-os-agentes)
+para como provocar cada um. Antes de rodar, configure o secret
+`ANTHROPIC_API_KEY` no GitHub. Para testar:
 
 ```bash
-# 1. gera um crash de proposito no sample-app (ver observability/README.md)
+# 1. gera um incidente de proposito no sample-app (qualquer um dos 5 tipos)
 kubectl port-forward svc/podinfo 9898:9898 &
 curl http://localhost:9898/panic
 
