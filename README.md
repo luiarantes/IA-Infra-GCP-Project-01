@@ -30,7 +30,7 @@ que o alerta foi resolvido.
 - [x] Fase 2 — CI/CD do Terraform validado end-to-end
 - [x] Fase 3 — Deploy do app de teste (podinfo)
 - [x] Fase 4 — Stack de observabilidade (métrica de erro, alerta, Managed Prometheus)
-- [ ] Fase 5 — Agente: log-analyzer → alerta
+- [x] Fase 5 — Agente: log-analyzer → alerta (validado com crash real, issue #2)
 - [ ] Fase 6 — Agente: diagnóstico → PR de fix
 - [ ] Fase 7 — Loop de self-healing com aprovação humana + failsafe de custo
 
@@ -142,8 +142,25 @@ gh run watch
 
 Se não houver restart recente, o job encerra rápido no pre-check (sem
 chamar a API da Anthropic). Se encontrar algo, o Claude Code investiga e
-abre uma GitHub Issue com o diagnóstico. Detalhes de arquitetura em
+abre uma GitHub Issue com o diagnóstico, com o label `agent-finding`.
+Detalhes de arquitetura em
 [`agents/log-analyzer/README.md`](agents/log-analyzer/README.md).
+
+## Como testar o agente pr-creator (fase 6)
+
+Diferente da fase 5, este roda **automaticamente**: assim que a issue com
+o label `agent-finding` é criada, o workflow dispara sozinho — não precisa
+`workflow_dispatch`. Para acompanhar:
+
+```bash
+gh run list --workflow=agent-pr-creator.yml
+```
+
+O agente lê a issue, decide se existe um fix de código razoável, e ou
+abre um PR (`Closes #N` no corpo) ou comenta na issue explicando por que
+nenhuma mudança é necessária. Ele só pode editar arquivos em `apps/` e
+`observability/` — nunca aplica nada diretamente. Detalhes de arquitetura
+em [`agents/pr-creator/README.md`](agents/pr-creator/README.md).
 
 ## Padrões seguidos neste repositório
 

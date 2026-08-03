@@ -10,7 +10,7 @@ on:
 permissions:
   contents: read
   id-token: write
-  issues: write
+  issues: write # cobre tambem "gh label create" (labels sao parte da API de issues)
 
 env:
   CLUSTER_NAME: aiops-gke
@@ -66,7 +66,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           claude -p "$(cat agents/log-analyzer/TASK.md)" \
-            --allowedTools "Bash(kubectl get:*)" "Bash(kubectl describe:*)" "Bash(kubectl logs:*)" "Bash(gcloud logging read:*)" "Bash(gcloud monitoring:*)" "Bash(gh issue create:*)" "Bash(gh issue list:*)"
+            --allowedTools "Bash(kubectl get:*)" "Bash(kubectl describe:*)" "Bash(kubectl logs:*)" "Bash(gcloud logging read:*)" "Bash(gcloud monitoring:*)" "Bash(gh issue create:*)" "Bash(gh issue list:*)" "Bash(gh label create:*)"
 
       - name: Nada encontrado no pre-check
         if: steps.precheck.outputs.found == 'false'

@@ -1,16 +1,18 @@
 # agents (fases 5 e 6)
 
-Placeholder para os agentes de IA (Claude) responsáveis pelo self-healing.
+Agentes de IA (Claude Code, rodando em modo headless via GitHub Actions)
+responsáveis por detectar problemas e propor correções.
 
-Plano:
-- **log-analyzer**: lê os logs/alertas coletados pela stack de observabilidade
-  e identifica anomalias
-- **triage**: usa Claude para diagnosticar a causa raiz, com contexto dos
-  manifests e do Terraform relevantes
-- **pr-creator**: gera o patch (YAML ou Terraform) e abre um Pull Request no
-  GitHub com o fix proposto — nunca aplica direto; o merge exige aprovação
-  humana no MVP
+- **[log-analyzer](log-analyzer/)** (fase 5): detecta um possível
+  incidente (via um pre-check barato, sem IA, sobre as métricas da fase
+  4), investiga com Claude Code, e abre uma GitHub Issue com o
+  diagnóstico — rotulada `agent-finding`. Não corrige nada.
+- **[pr-creator](pr-creator/)** (fase 6): acionado automaticamente quando
+  uma issue é rotulada `agent-finding`. Avalia o diagnóstico e decide se
+  existe uma correção de código razoável — se sim, abre um Pull Request;
+  se não, comenta explicando por quê. Nunca aplica nada diretamente.
 
-Onde roda no MVP: GitHub Actions agendado (`schedule:` trigger), sem custo
-extra de infraestrutura. Migrar para Cloud Run Job/GKE CronJob é uma
-evolução possível, não um requisito da fase 5/6.
+Cada agente roda isolado, com escopo de permissões restrito ao que sua
+etapa exige (least privilege também vale para autonomia de IA). Merge e
+aplicação do PR ficam para uma etapa futura, com aprovação humana
+obrigatória.
