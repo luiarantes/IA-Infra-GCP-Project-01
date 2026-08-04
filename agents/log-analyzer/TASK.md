@@ -14,8 +14,11 @@ própria:
 - **`restart_count`**: containers reiniciando (`kubernetes.io/container/restart_count`)
 - **`cpu`**: uso de CPU acima do limite configurado (`kubernetes.io/container/cpu/limit_utilization`)
 - **`memory`**: uso de memória acima do limite configurado (`kubernetes.io/container/memory/limit_utilization`)
-- **`http_5xx`**: taxa de erros HTTP 5xx no `podinfo` (métrica `http_requests_total`, coletada via Managed Prometheus)
-- **`latency`**: latência p95 elevada no `podinfo` (métrica `http_request_duration_seconds`)
+- **`http_5xx`**: taxa de erros HTTP 5xx (métrica `http_requests_total`,
+  coletada via Managed Prometheus — só existe para apps que têm um
+  `PodMonitoring` configurado em `observability/`; nem todo app tem)
+- **`latency`**: latência p95 elevada (métrica `http_request_duration_seconds`,
+  mesma fonte)
 
 Você vai receber, junto com esta tarefa, quais dessas categorias o
 pre-check encontrou. Use isso para direcionar a investigação — não
@@ -36,13 +39,18 @@ precisa checar tudo se só uma categoria foi sinalizada.
    a carga (ex: um loop, muitas requisições).
 
 4. **Se o sinal foi `http_5xx` ou `latency`**: você pode consultar as
-   métricas brutas do próprio `podinfo` via o proxy da API do Kubernetes,
-   sem precisar de nenhuma ferramenta nova:
+   métricas brutas do app diretamente via o proxy da API do Kubernetes,
+   sem precisar de nenhuma ferramenta nova. Primeiro descubra a porta
+   que o container expõe:
    ```
-   kubectl get --raw "/api/v1/namespaces/default/pods/<nome-do-pod>:9898/proxy/metrics"
+   kubectl get pod <nome-do-pod> -o jsonpath='{.spec.containers[0].ports[0].containerPort}'
    ```
-   Isso devolve o `/metrics` do podinfo em formato Prometheus — procure
-   por `http_requests_total` (labels de status) e
+   Depois:
+   ```
+   kubectl get --raw "/api/v1/namespaces/default/pods/<nome-do-pod>:<porta>/proxy/metrics"
+   ```
+   Isso devolve o `/metrics` do app em formato Prometheus — procure por
+   `http_requests_total` (labels de status) e
    `http_request_duration_seconds_bucket` (latência). Também vale
    `kubectl logs <nome>` para ver se as requisições com erro aparecem
    registradas.
@@ -60,8 +68,8 @@ precisa checar tudo se só uma categoria foi sinalizada.
    label não existe ainda, rode
    `gh label create agent-finding --color FBCA04 --description "Achado de agente de observabilidade"`
    e tente de novo. A issue deve conter:
-   - Título curto e descritivo, mencionando a categoria (ex: "podinfo:
-     latência p95 elevada - causa provável: X")
+   - Título curto e descritivo, mencionando o app e a categoria (ex:
+     "service-api: latência p95 elevada - causa provável: X")
    - O que foi observado (categoria do sinal, pod, horário aproximado,
      valores relevantes — contagem de restarts, % de CPU/memória, taxa de
      erro, latência medida)

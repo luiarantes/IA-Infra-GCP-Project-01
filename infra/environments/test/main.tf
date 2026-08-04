@@ -65,11 +65,30 @@ module "budget" {
   depends_on = [google_project_service.apis]
 }
 
-module "observability" {
+# Um app so tem metricas HTTP (5xx/latencia) se expuser /metrics via
+# PodMonitoring - hoje so o podinfo tem isso (ver
+# observability/podmonitoring.yaml). Os 4 microsservicos ainda nao
+# foram instrumentados com Prometheus (so tracing via Cloud Trace, fase
+# 8.2), entao ficam so com os sinais nativos do GKE (restart/CPU/memoria).
+module "observability_podinfo" {
   source = "../../modules/observability"
 
-  project_id   = var.project_id
-  cluster_name = var.cluster_name
+  project_id     = var.project_id
+  cluster_name   = var.cluster_name
+  app_label      = "podinfo"
+  pod_name_regex = "podinfo-.*"
+
+  depends_on = [module.gke]
+}
+
+module "observability_microservices" {
+  source = "../../modules/observability"
+
+  project_id          = var.project_id
+  cluster_name        = var.cluster_name
+  app_label           = "microservices"
+  pod_name_regex      = "(gateway|service-api|service-worker|service-downstream)-.*"
+  enable_http_metrics = false
 
   depends_on = [module.gke]
 }

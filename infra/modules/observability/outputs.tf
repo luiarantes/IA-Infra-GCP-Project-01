@@ -19,9 +19,9 @@ output "memory_alert_policy_name" {
 }
 
 output "http_5xx_alert_policy_name" {
-  value = google_monitoring_alert_policy.http_5xx_errors.name
+  value = var.enable_http_metrics ? google_monitoring_alert_policy.http_5xx_errors[0].name : null
 }
 
 output "latency_alert_policy_name" {
-  value = google_monitoring_alert_policy.high_latency.name
+  value = var.enable_http_metrics ? google_monitoring_alert_policy.high_latency[0].name : null
 }

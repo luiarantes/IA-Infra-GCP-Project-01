@@ -16,8 +16,9 @@ A issue #${ISSUE_NUMBER} foi aberta por um agente de observabilidade
 2. Entenda a causa raiz descrita nela.
 3. Decida se existe uma mudança de código razoável a propor:
    - Exemplos de mudanças válidas: ajustar `readinessProbe`/`livenessProbe`
-     em `apps/sample-app/deployment.yaml`, ajustar `resources.requests`/
-     `limits`, ajustar o `PodMonitoring` em `observability/`.
+     ou `resources.requests`/`limits` no `deployment.yaml` do app
+     relevante (dentro de `apps/<nome-do-app>/`), ajustar o
+     `PodMonitoring` em `observability/`.
    - Se a causa raiz for um teste deliberado (ex: alguém chamou
      manualmente um endpoint de simulação de falha, tipo `/panic`) e não
      há nada de fato quebrado no código, **não existe fix a propor**.

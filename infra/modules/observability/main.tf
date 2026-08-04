@@ -16,6 +16,7 @@ resource "google_logging_metric" "app_errors" {
     resource.type="k8s_container"
     resource.labels.cluster_name="${var.cluster_name}"
     resource.labels.namespace_name="${var.namespace}"
+    resource.labels.pod_name=~"^(${var.pod_name_regex})"
     severity>=ERROR
   EOT
 
@@ -71,9 +72,10 @@ resource "google_monitoring_alert_policy" "app_error_rate" {
 # Alerta baseado em sinal de plataforma (nao de aplicacao): dispara sempre
 # que algum container reinicia, via a metrica nativa do GKE
 # kubernetes.io/container/restart_count. Funciona independente de como a
-# app loga - e o sinal que os agentes de self-healing (fase 5+) vao
-# realmente usar para detectar crash loops como o testado manualmente
-# com o endpoint /panic do podinfo.
+# app loga - e o sinal que os agentes de self-healing (fase 5+) usam pra
+# detectar crash loops. Filtrado por resource.labels.pod_name (fase 8.4)
+# pra nao misturar restarts de apps diferentes quando o modulo e
+# instanciado mais de uma vez no mesmo namespace.
 resource "google_monitoring_alert_policy" "container_restarts" {
   project      = var.project_id
   display_name = "${var.app_label}: container reiniciou"
@@ -83,7 +85,7 @@ resource "google_monitoring_alert_policy" "container_restarts" {
     display_name = "restart_count aumentou nos ultimos 5 minutos"
 
     condition_threshold {
-      filter          = "resource.type=\"k8s_container\" AND resource.labels.cluster_name=\"${var.cluster_name}\" AND resource.labels.namespace_name=\"${var.namespace}\" AND metric.type=\"kubernetes.io/container/restart_count\""
+      filter          = "resource.type=\"k8s_container\" AND resource.labels.cluster_name=\"${var.cluster_name}\" AND resource.labels.namespace_name=\"${var.namespace}\" AND resource.labels.pod_name=monitoring.regex.full_match(\"${var.pod_name_regex}\") AND metric.type=\"kubernetes.io/container/restart_count\""
       comparison      = "COMPARISON_GT"
       threshold_value = var.restart_threshold
       duration        = "0s"
@@ -101,9 +103,10 @@ resource "google_monitoring_alert_policy" "container_restarts" {
 }
 
 # ---------------------------------------------------------------------
-# Alertas adicionais: CPU/memoria alta (metricas nativas do GKE) e
-# erros 5xx / latencia (metricas do proprio podinfo, coletadas via
-# Managed Prometheus - ver observability/podmonitoring.yaml).
+# Alertas adicionais: CPU/memoria alta (metricas nativas do GKE, sempre
+# criados) e erros 5xx / latencia (dependem do app expor metricas
+# Prometheus via PodMonitoring - so criados se enable_http_metrics=true,
+# ja que nem todo app tem essa instrumentacao).
 # ---------------------------------------------------------------------
 
 # CPU alta: "limit_utilization" ja vem normalizado (0.0-1.0) pela propria
@@ -118,7 +121,7 @@ resource "google_monitoring_alert_policy" "high_cpu" {
     display_name = "CPU acima do limite configurado"
 
     condition_threshold {
-      filter          = "resource.type=\"k8s_container\" AND resource.labels.cluster_name=\"${var.cluster_name}\" AND resource.labels.namespace_name=\"${var.namespace}\" AND metric.type=\"kubernetes.io/container/cpu/limit_utilization\""
+      filter          = "resource.type=\"k8s_container\" AND resource.labels.cluster_name=\"${var.cluster_name}\" AND resource.labels.namespace_name=\"${var.namespace}\" AND resource.labels.pod_name=monitoring.regex.full_match(\"${var.pod_name_regex}\") AND metric.type=\"kubernetes.io/container/cpu/limit_utilization\""
       comparison      = "COMPARISON_GT"
       threshold_value = var.cpu_utilization_threshold
       duration        = "60s"
@@ -145,7 +148,7 @@ resource "google_monitoring_alert_policy" "high_memory" {
     display_name = "Memoria acima do limite configurado"
 
     condition_threshold {
-      filter          = "resource.type=\"k8s_container\" AND resource.labels.cluster_name=\"${var.cluster_name}\" AND resource.labels.namespace_name=\"${var.namespace}\" AND metric.type=\"kubernetes.io/container/memory/limit_utilization\""
+      filter          = "resource.type=\"k8s_container\" AND resource.labels.cluster_name=\"${var.cluster_name}\" AND resource.labels.namespace_name=\"${var.namespace}\" AND resource.labels.pod_name=monitoring.regex.full_match(\"${var.pod_name_regex}\") AND metric.type=\"kubernetes.io/container/memory/limit_utilization\""
       comparison      = "COMPARISON_GT"
       threshold_value = var.memory_utilization_threshold
       duration        = "60s"
@@ -162,12 +165,14 @@ resource "google_monitoring_alert_policy" "high_memory" {
   }
 }
 
-# Taxa de erros 5xx: usa PromQL diretamente sobre a metrica que o
-# podinfo ja expoe (http_requests_total, coletada via PodMonitoring).
-# Tipo de condicao diferente dos anteriores (condition_prometheus_query_language,
-# nao condition_threshold) - ainda nao testado neste projeto, e' o ponto
-# mais provavel de precisar ajuste.
+# Taxa de erros 5xx: usa PromQL diretamente sobre a metrica http_requests_total
+# que o app expoe via PodMonitoring. Tipo de condicao diferente dos
+# anteriores (condition_prometheus_query_language, nao condition_threshold).
+# So criado se enable_http_metrics=true - nem todo app tem essa metrica
+# (ver observability/podmonitoring.yaml, hoje so cobre o podinfo).
 resource "google_monitoring_alert_policy" "http_5xx_errors" {
+  count = var.enable_http_metrics ? 1 : 0
+
   project      = var.project_id
   display_name = "${var.app_label}: taxa de erros 5xx"
   combiner     = "OR"
@@ -188,8 +193,10 @@ resource "google_monitoring_alert_policy" "http_5xx_errors" {
 
 # Latencia p95: histogram_quantile precisa de PromQL de verdade - nao da
 # pra fazer isso com condition_threshold comum sobre as buckets do
-# histograma.
+# histograma. Mesma condicao de enable_http_metrics do alerta de 5xx.
 resource "google_monitoring_alert_policy" "high_latency" {
+  count = var.enable_http_metrics ? 1 : 0
+
   project      = var.project_id
   display_name = "${var.app_label}: latencia p95 elevada"
   combiner     = "OR"
