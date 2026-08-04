@@ -1,0 +1,37 @@
+# Identidade minima pro Job do Chaos Toolkit falar com a API do
+# Kubernetes de dentro do cluster (in-cluster config, sem GCP IAM/
+# Workload Identity nenhum - o Chaos Toolkit so mexe com recursos do
+# K8s, nunca chama API do GCP). Least privilege: so o necessario pros
+# experimentos de apps/{gateway,service-worker}/*.json.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: chaos-toolkit-runner
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: chaos-toolkit-runner
+  namespace: default
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch", "delete"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: chaos-toolkit-runner
+  namespace: default
+subjects:
+  - kind: ServiceAccount
+    name: chaos-toolkit-runner
+    namespace: default
+roleRef:
+  kind: Role
+  name: chaos-toolkit-runner
+  apiGroup: rbac.authorization.k8s.io

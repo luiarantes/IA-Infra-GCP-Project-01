@@ -1,0 +1,46 @@
+{
+  "version": "1.0.0",
+  "title": "O gateway sobrevive a perda do pod?",
+  "description": "Mata um pod do gateway e confirma que o Deployment se recupera sozinho, sem intervencao manual - cenario mais simples de chaos, sem estado em transito.",
+  "tags": ["kubernetes", "pod", "gateway"],
+  "steady-state-hypothesis": {
+    "title": "gateway tem pelo menos 1 pod Running",
+    "probes": [
+      {
+        "type": "probe",
+        "name": "gateway-pods-running",
+        "tolerance": true,
+        "provider": {
+          "type": "python",
+          "module": "chaosk8s.pod.probes",
+          "func": "pods_in_phase",
+          "arguments": {
+            "ns": "default",
+            "label_selector": "app=gateway",
+            "phase": "Running"
+          }
+        }
+      }
+    ]
+  },
+  "method": [
+    {
+      "type": "action",
+      "name": "terminate-gateway-pod",
+      "provider": {
+        "type": "python",
+        "module": "chaosk8s.pod.actions",
+        "func": "terminate_pods",
+        "arguments": {
+          "ns": "default",
+          "label_selector": "app=gateway",
+          "rand": false
+        }
+      },
+      "pauses": {
+        "after": 30
+      }
+    }
+  ],
+  "rollbacks": []
+}

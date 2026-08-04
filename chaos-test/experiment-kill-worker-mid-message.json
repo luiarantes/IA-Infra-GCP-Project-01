@@ -1,0 +1,58 @@
+{
+  "version": "1.0.0",
+  "title": "Uma mensagem no Pub/Sub sobrevive a morte do service-worker?",
+  "description": "Publica uma mensagem via POST /work no gateway e mata o pod do service-worker logo em seguida. O service-worker so da ack() na mensagem depois de processar com sucesso (ver apps/service-worker/main.py) - se ele morrer antes disso, o Pub/Sub deve redeliver a mensagem pro pod novo depois que o Deployment se recupera.",
+  "tags": ["kubernetes", "pod", "pubsub", "service-worker"],
+  "steady-state-hypothesis": {
+    "title": "service-worker tem pelo menos 1 pod Running",
+    "probes": [
+      {
+        "type": "probe",
+        "name": "worker-pods-running",
+        "tolerance": true,
+        "provider": {
+          "type": "python",
+          "module": "chaosk8s.pod.probes",
+          "func": "pods_in_phase",
+          "arguments": {
+            "ns": "default",
+            "label_selector": "app=service-worker",
+            "phase": "Running"
+          }
+        }
+      }
+    ]
+  },
+  "method": [
+    {
+      "type": "action",
+      "name": "publish-work-via-gateway",
+      "provider": {
+        "type": "http",
+        "url": "http://gateway.default.svc.cluster.local:8080/work",
+        "method": "POST",
+        "headers": { "Content-Type": "application/json" },
+        "arguments": { "source": "chaos-toolkit" },
+        "timeout": 10
+      }
+    },
+    {
+      "type": "action",
+      "name": "terminate-worker-pod",
+      "provider": {
+        "type": "python",
+        "module": "chaosk8s.pod.actions",
+        "func": "terminate_pods",
+        "arguments": {
+          "ns": "default",
+          "label_selector": "app=service-worker",
+          "rand": false
+        }
+      },
+      "pauses": {
+        "after": 45
+      }
+    }
+  ],
+  "rollbacks": []
+}

@@ -1,0 +1,75 @@
+name: Chaos Test
+
+# Testes de resiliencia via Chaos Toolkit (ver chaos-test/README.md).
+# Escolhido em vez do Chaos Mesh depois de testar de verdade nesta
+# sessao: o GKE Autopilot bloqueia o chaos-daemon privilegiado que o
+# Chaos Mesh precisa pra experimentos de rede/stress. O Chaos Toolkit
+# so usa a API padrao do Kubernetes, sem esse problema.
+#
+# So workflow_dispatch, de proposito - mesma logica de custo sob
+# demanda ja usada nos agentes de IA e no load-test.
+
+on:
+  workflow_dispatch:
+    inputs:
+      scenario:
+        description: "Cenario de chaos a rodar"
+        required: true
+        type: choice
+        options:
+          - kill-gateway
+          - kill-worker-mid-message
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  CLUSTER_NAME: aiops-gke
+  CLUSTER_LOCATION: us-central1
+
+jobs:
+  chaos-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ env.CLUSTER_NAME }}
+          location: ${{ env.CLUSTER_LOCATION }}
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Aplicar RBAC do Chaos Toolkit (idempotente)
+        run: kubectl apply -f chaos-test/rbac.yaml
+
+      - name: Gerar o ConfigMap a partir do experimento escolhido
+        run: |
+          kubectl create configmap chaos-experiment \
+            --from-file=experiment.json="chaos-test/experiment-${{ inputs.scenario }}.json" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Recriar o Job (Jobs sao imutaveis, precisa apagar o antigo)
+        run: kubectl delete job chaos-test --ignore-not-found
+
+      - name: Disparar o experimento
+        run: kubectl apply -f chaos-test/job.yaml
+
+      - name: Aguardar o experimento terminar
+        run: |
+          kubectl wait --for=condition=complete job/chaos-test --timeout=180s || \
+            kubectl wait --for=condition=failed job/chaos-test --timeout=10s || true
+
+      - name: Resultado do experimento (journal do Chaos Toolkit)
+        if: always()
+        run: kubectl logs job/chaos-test
+
+      - name: Estado dos pods depois do experimento
+        if: always()
+        run: kubectl get pods
