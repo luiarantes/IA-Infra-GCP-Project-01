@@ -1,8 +1,9 @@
 # service-worker: consome a subscription pull do Pub/Sub em background
 # (biblioteca google-cloud-pubsub gerencia a propria thread de streaming
 # pull) e chama o service-downstream para cada mensagem. Usa a KSA
-# microservices-ksa (Workload Identity) para consumir sem credencial
-# estatica - ver apps/shared/serviceaccount.yaml.
+# microservices-ksa (Workload Identity) para consumir do Pub/Sub e
+# exportar trace pro Cloud Trace (fase 8.2) sem credencial estatica -
+# ver apps/shared/serviceaccount.yaml.
 apiVersion: apps/v1
 kind: Deployment
 metadata:

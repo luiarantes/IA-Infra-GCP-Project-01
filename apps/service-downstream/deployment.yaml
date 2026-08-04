@@ -1,5 +1,6 @@
-# service-downstream: fim da cadeia, chamado pelo service-worker.
-# Nao fala com o GCP, entao usa a KSA default (sem Workload Identity).
+# service-downstream: fim da cadeia, chamado pelo service-worker. Usa a
+# KSA microservices-trace-ksa (fase 8.2) so pra exportar trace pro
+# Cloud Trace - nao fala com o Pub/Sub.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -16,12 +17,16 @@ spec:
       labels:
         app: service-downstream
     spec:
+      serviceAccountName: microservices-trace-ksa
       containers:
         - name: service-downstream
           image: ${IMAGE}
           ports:
             - name: http
               containerPort: 8080
+          env:
+            - name: PROJECT_ID
+              value: "${PROJECT_ID}"
           # GKE Autopilot exige requests explicitos em todo pod
           resources:
             requests:

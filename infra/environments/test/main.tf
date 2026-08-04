@@ -8,6 +8,7 @@ locals {
     "billingbudgets.googleapis.com",
     "pubsub.googleapis.com",
     "iam.googleapis.com",
+    "cloudtrace.googleapis.com",
   ]
 }
 
@@ -74,10 +75,10 @@ module "observability" {
 }
 
 # Identidade do GCP para os pods do fluxo de microsservicos (fase 8.1)
-# publicarem/consumirem do Pub/Sub sem credencial estatica. A GSA
-# ganha so os papeis que o fluxo precisa hoje; a fase 8.2 (tracing)
-# reaproveita essa mesma GSA adicionando roles/cloudtrace.agent, em vez
-# de criar uma identidade nova.
+# publicarem/consumirem do Pub/Sub sem credencial estatica. Usada por
+# service-api e service-worker, os unicos que falam com o Pub/Sub - a
+# fase 8.2 adiciona roles/cloudtrace.agent aqui tambem, ja que esses
+# dois tambem exportam trace.
 module "microservices_workload_identity" {
   source = "../../modules/workload-identity"
 
@@ -88,6 +89,26 @@ module "microservices_workload_identity" {
   roles = [
     "roles/pubsub.publisher",
     "roles/pubsub.subscriber",
+    "roles/cloudtrace.agent",
+  ]
+
+  depends_on = [module.gke, google_project_service.apis]
+}
+
+# Identidade separada (fase 8.2) so para gateway e service-downstream:
+# eles nao falam com o Pub/Sub, entao nao ganham as roles de
+# publisher/subscriber da GSA acima - least privilege, cada servico com
+# so o que sua funcao exige (mesmo principio ja seguido no resto do
+# projeto).
+module "microservices_trace_workload_identity" {
+  source = "../../modules/workload-identity"
+
+  project_id     = var.project_id
+  gsa_account_id = "microservices-trace"
+  ksa_name       = "microservices-trace-ksa"
+  namespace      = "default"
+  roles = [
+    "roles/cloudtrace.agent",
   ]
 
   depends_on = [module.gke, google_project_service.apis]

@@ -1,5 +1,8 @@
 # gateway: unico ponto de entrada publico do fluxo da fase 8 (fase
-# 8.1 do plano de microsservicos) - encaminha para o service-api.
+# 8.1 do plano de microsservicos) - encaminha para o service-api. Usa a
+# KSA microservices-trace-ksa (fase 8.2) so pra exportar trace pro
+# Cloud Trace - nao fala com o Pub/Sub, entao nao ganha as roles de
+# publisher/subscriber da KSA usada por service-api/service-worker.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -16,6 +19,7 @@ spec:
       labels:
         app: gateway
     spec:
+      serviceAccountName: microservices-trace-ksa
       containers:
         - name: gateway
           image: ${IMAGE}
@@ -25,6 +29,8 @@ spec:
           env:
             - name: SERVICE_API_URL
               value: "http://service-api:8080"
+            - name: PROJECT_ID
+              value: "${PROJECT_ID}"
           # GKE Autopilot exige requests explicitos em todo pod
           resources:
             requests:

@@ -442,6 +442,35 @@ O mesmo passo 13 (`terraform-destroy.yml`) já cobre tudo: remove também a
 fila do Pub/Sub, a identidade do GKE e os 4 serviços novos, junto com o
 restante da infraestrutura.
 
+### 17. Ver o rastreamento distribuído no Cloud Trace (fase 8.2)
+
+> Faça isso **antes** do passo 16, enquanto o ambiente ainda está no ar —
+> este passo só existe pra documentar a fase 8.2, que foi implementada
+> depois da 8.1 (por isso aparece no final do guia, fora de ordem).
+
+Os 4 serviços exportam spans reais para o Cloud Trace via OpenTelemetry
+(propagação automática entre chamadas HTTP; manual, via atributos da
+mensagem, na travessia pelo Pub/Sub). Repita o teste do passo 15
+(`POST /work` no gateway) e pegue o `trace_id` no log:
+
+```bash
+kubectl logs deployment/gateway --tail=20
+```
+
+Deve aparecer uma linha `trace_id=... request_id=...`. Abra o Trace
+Explorer no Console (troque `SEU_PROJECT_ID`):
+
+```
+https://console.cloud.google.com/traces/list?project=SEU_PROJECT_ID
+```
+
+Busque pelo `trace_id` copiado. Deve aparecer um único trace atravessando
+os 4 serviços (`gateway` → `service-api` → `service-worker` →
+`service-downstream`), incluindo o span manual
+`service-worker.process_message` — o único trecho do fluxo sem
+propagação automática de HTTP, já que o Pub/Sub não carrega o trace
+context sozinho.
+
 ---
 
 ## Padrões de engenharia seguidos

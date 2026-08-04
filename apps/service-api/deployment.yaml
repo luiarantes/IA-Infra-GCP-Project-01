@@ -1,7 +1,8 @@
 # service-api: recebe do gateway, publica no Pub/Sub e responde 202 de
 # imediato - o processamento de fato acontece de forma assincrona no
 # service-worker. Usa a KSA microservices-ksa (Workload Identity) para
-# publicar sem credencial estatica - ver apps/shared/serviceaccount.yaml.
+# publicar no Pub/Sub e exportar trace pro Cloud Trace (fase 8.2) sem
+# credencial estatica - ver apps/shared/serviceaccount.yaml.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
