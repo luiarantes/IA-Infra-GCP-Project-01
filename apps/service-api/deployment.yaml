@@ -39,6 +39,15 @@ spec:
             limits:
               cpu: 250m
               memory: 256Mi
+          # Startup com OpenTelemetry e mais pesado que so FastAPI puro
+          # - da ate 150s antes das probes normais (mais estritas)
+          # passarem a valer.
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 5
+            failureThreshold: 30
           readinessProbe:
             httpGet:
               path: /readyz

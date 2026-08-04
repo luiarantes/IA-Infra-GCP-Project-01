@@ -39,6 +39,17 @@ spec:
             limits:
               cpu: 250m
               memory: 256Mi
+          # O startup com OpenTelemetry (SDK + instrumentacao + client
+          # gRPC do Cloud Trace) e mais pesado que so FastAPI puro -
+          # sem isso, o livenessProbe matava o container antes dele
+          # terminar de subir. O startupProbe da ate 150s antes das
+          # probes normais (mais estritas) passarem a valer.
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 5
+            failureThreshold: 30
           readinessProbe:
             httpGet:
               path: /readyz
