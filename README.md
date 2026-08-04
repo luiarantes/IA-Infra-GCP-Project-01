@@ -60,28 +60,32 @@ atingido, sem esperar confirmação humana.
 
 ### Ferramentas locais
 
-| Ferramenta | Instalação (macOS/Homebrew) | Para quê |
-|---|---|---|
-| `git` | já vem no macOS/geralmente pré-instalado | clonar e versionar o repositório |
-| `gcloud` (Google Cloud SDK) | `brew install --cask google-cloud-sdk` | autenticar e interagir com o GCP |
-| `terraform` >= 1.5 | `brew install hashicorp/tap/terraform` | provisionar a infraestrutura |
-| `gh` (GitHub CLI) | `brew install gh` | criar repositório, secrets, disparar workflows |
-| `kubectl` | `gcloud components install kubectl` | interagir com o cluster |
-| `gke-gcloud-auth-plugin` | `gcloud components install gke-gcloud-auth-plugin` | plugin obrigatório para o `kubectl` autenticar em clusters GKE (client-go >= 1.26 removeu a autenticação nativa de cada cloud provider) |
-| `jq` | `brew install jq` | processar JSON em alguns comandos de verificação |
+| Ferramenta | Para quê |
+|---|---|
+| `git` | clonar e versionar o repositório |
+| `gcloud` (Google Cloud SDK) | autenticar e interagir com o GCP |
+| `terraform` >= 1.5 | provisionar a infraestrutura |
+| `gh` (GitHub CLI) | criar repositório, secrets, disparar workflows |
+| `kubectl` | interagir com o cluster |
+| `gke-gcloud-auth-plugin` | plugin obrigatório para o `kubectl` autenticar em clusters GKE (client-go >= 1.26 removeu a autenticação nativa de cada cloud provider) — instalado via `gcloud components install gke-gcloud-auth-plugin` |
+| `jq` | processar JSON em alguns comandos de verificação |
 
-> **Nota sobre o Terraform**: desde a mudança de licença da HashiCorp
-> (BUSL), o Terraform saiu do `homebrew-core` — por isso o comando usa um
-> tap específico (`hashicorp/tap/terraform`) em vez de `brew install
-> terraform`. A alternativa 100% open-source é o
-> [OpenTerraform](https://opentofu.org/) (`brew install opentofu`,
-> comando `tofu` em vez de `terraform`, sintaxe idêntica).
-
-Em outros sistemas operacionais, use os instaladores oficiais:
+Use os instaladores oficiais de cada ferramenta:
 [gcloud](https://cloud.google.com/sdk/docs/install) ·
 [Terraform](https://developer.hashicorp.com/terraform/install) ·
 [gh](https://cli.github.com/) ·
-[kubectl](https://kubernetes.io/docs/tasks/tools/).
+[kubectl](https://kubernetes.io/docs/tasks/tools/) ·
+[jq](https://jqlang.org/download/).
+
+`kubectl` também pode ser instalado via `gcloud components install
+kubectl`, se preferir manter tudo dentro do próprio Google Cloud SDK.
+
+> **Nota sobre o Terraform**: desde a mudança de licença da HashiCorp
+> (BUSL), o Terraform saiu dos gerenciadores de pacote genéricos em
+> alguns sistemas (ex: `homebrew-core`) e precisa de um repositório
+> específico da HashiCorp — veja o guia oficial de instalação acima. A
+> alternativa 100% open-source é o [OpenTofu](https://opentofu.org/)
+> (comando `tofu` em vez de `terraform`, sintaxe idêntica).
 
 ---
 
