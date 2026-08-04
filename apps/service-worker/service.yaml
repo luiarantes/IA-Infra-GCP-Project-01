@@ -1,0 +1,17 @@
+# ClusterIP: o worker nao recebe trafego HTTP externo de ninguem (so
+# consome do Pub/Sub), mas mantem o mesmo padrao dos outros servicos
+# para health checks e uma futura extensao (ex: expor /metrics).
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-worker
+  labels:
+    app: service-worker
+spec:
+  type: ClusterIP
+  selector:
+    app: service-worker
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

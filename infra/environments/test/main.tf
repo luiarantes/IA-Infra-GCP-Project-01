@@ -6,6 +6,8 @@ locals {
     "monitoring.googleapis.com",
     "logging.googleapis.com",
     "billingbudgets.googleapis.com",
+    "pubsub.googleapis.com",
+    "iam.googleapis.com",
   ]
 }
 
@@ -69,4 +71,24 @@ module "observability" {
   cluster_name = var.cluster_name
 
   depends_on = [module.gke]
+}
+
+# Identidade do GCP para os pods do fluxo de microsservicos (fase 8.1)
+# publicarem/consumirem do Pub/Sub sem credencial estatica. A GSA
+# ganha so os papeis que o fluxo precisa hoje; a fase 8.2 (tracing)
+# reaproveita essa mesma GSA adicionando roles/cloudtrace.agent, em vez
+# de criar uma identidade nova.
+module "microservices_workload_identity" {
+  source = "../../modules/workload-identity"
+
+  project_id     = var.project_id
+  gsa_account_id = "microservices-workload"
+  ksa_name       = "microservices-ksa"
+  namespace      = "default"
+  roles = [
+    "roles/pubsub.publisher",
+    "roles/pubsub.subscriber",
+  ]
+
+  depends_on = [module.gke, google_project_service.apis]
 }

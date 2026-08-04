@@ -1,0 +1,83 @@
+name: Deploy Microservices
+
+# Fase 8.1: build+push+deploy dos 4 servicos do fluxo de microsservicos
+# (gateway, service-api, service-worker, service-downstream). Workflow
+# separado do deploy-app.yml (que continua cuidando so do podinfo) -
+# nao compartilha triggers nem toca nos manifests do podinfo.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/gateway/**"
+      - "apps/service-api/**"
+      - "apps/service-worker/**"
+      - "apps/service-downstream/**"
+      - "apps/shared/**"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  CLUSTER_NAME: aiops-gke
+  CLUSTER_LOCATION: us-central1
+  AR_REGION: us-central1
+  AR_REPOSITORY: sample-app
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Configurar Docker para push no Artifact Registry
+        run: gcloud auth configure-docker "${{ env.AR_REGION }}-docker.pkg.dev" --quiet
+
+      - name: Build e push das imagens
+        env:
+          PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+        run: |
+          set -euo pipefail
+          AR_URL="${{ env.AR_REGION }}-docker.pkg.dev/${PROJECT_ID}/${{ env.AR_REPOSITORY }}"
+          for SERVICE in gateway service-api service-worker service-downstream; do
+            docker build -t "${AR_URL}/${SERVICE}:${{ github.sha }}" "apps/${SERVICE}"
+            docker push "${AR_URL}/${SERVICE}:${{ github.sha }}"
+          done
+
+      - uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ env.CLUSTER_NAME }}
+          location: ${{ env.CLUSTER_LOCATION }}
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Deploy da ServiceAccount compartilhada (Workload Identity)
+        env:
+          PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+        run: envsubst '${PROJECT_ID}' < apps/shared/serviceaccount.yaml | kubectl apply -f -
+
+      - name: Deploy dos servicos
+        env:
+          PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+        run: |
+          set -euo pipefail
+          AR_URL="${{ env.AR_REGION }}-docker.pkg.dev/${PROJECT_ID}/${{ env.AR_REPOSITORY }}"
+          for SERVICE in gateway service-api service-worker service-downstream; do
+            export IMAGE="${AR_URL}/${SERVICE}:${{ github.sha }}"
+            envsubst '${IMAGE} ${PROJECT_ID}' < "apps/${SERVICE}/deployment.yaml" | kubectl apply -f -
+            kubectl apply -f "apps/${SERVICE}/service.yaml"
+          done
+
+      - name: Aguardar rollout
+        run: |
+          set -euo pipefail
+          for SERVICE in gateway service-api service-worker service-downstream; do
+            kubectl rollout status "deployment/${SERVICE}" --timeout=180s
+          done

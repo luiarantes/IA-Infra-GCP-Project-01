@@ -1,0 +1,18 @@
+# LoadBalancer de proposito, diferente do padrao ClusterIP usado no
+# resto do projeto: o gateway e o unico ponto de entrada publico do
+# fluxo de microsservicos, custo de ~$0,025/h aceitavel porque o
+# ambiente e destruido ao final de cada sessao de teste.
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway
+  labels:
+    app: gateway
+spec:
+  type: LoadBalancer
+  selector:
+    app: gateway
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

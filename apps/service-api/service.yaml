@@ -1,0 +1,15 @@
+# ClusterIP: so o gateway (dentro do cluster) precisa chamar o service-api.
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-api
+  labels:
+    app: service-api
+spec:
+  type: ClusterIP
+  selector:
+    app: service-api
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

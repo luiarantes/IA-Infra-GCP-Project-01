@@ -1,0 +1,16 @@
+# ClusterIP: so o service-worker (dentro do cluster) precisa chamar o
+# service-downstream.
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-downstream
+  labels:
+    app: service-downstream
+spec:
+  type: ClusterIP
+  selector:
+    app: service-downstream
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

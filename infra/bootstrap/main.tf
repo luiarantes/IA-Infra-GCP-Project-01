@@ -61,7 +61,9 @@ resource "google_project_iam_member" "github_actions_roles" {
     "roles/serviceusage.serviceUsageAdmin",
     "roles/monitoring.editor",
     "roles/logging.admin",
-    "roles/pubsub.admin", # topico de alertas do modulo budget
+    "roles/pubsub.admin", # topico de alertas do modulo budget + fila da fase 8
+    "roles/iam.serviceAccountAdmin",       # criar a GSA de Workload Identity do GKE (fase 8) e seu binding
+    "roles/resourcemanager.projectIamAdmin", # conceder roles de projeto a essa GSA nova
   ])
 
   project = var.project_id

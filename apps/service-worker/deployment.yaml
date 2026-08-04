@@ -1,0 +1,57 @@
+# service-worker: consome a subscription pull do Pub/Sub em background
+# (biblioteca google-cloud-pubsub gerencia a propria thread de streaming
+# pull) e chama o service-downstream para cada mensagem. Usa a KSA
+# microservices-ksa (Workload Identity) para consumir sem credencial
+# estatica - ver apps/shared/serviceaccount.yaml.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: service-worker
+  labels:
+    app: service-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: service-worker
+  template:
+    metadata:
+      labels:
+        app: service-worker
+    spec:
+      serviceAccountName: microservices-ksa
+      containers:
+        - name: service-worker
+          image: ${IMAGE}
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: PROJECT_ID
+              value: "${PROJECT_ID}"
+            - name: PUBSUB_SUBSCRIPTION
+              value: "microservices-queue-worker-pull"
+            - name: SERVICE_DOWNSTREAM_URL
+              value: "http://service-downstream:8080"
+          # GKE Autopilot exige requests explicitos em todo pod
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3

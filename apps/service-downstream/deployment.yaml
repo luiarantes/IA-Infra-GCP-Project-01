@@ -1,0 +1,46 @@
+# service-downstream: fim da cadeia, chamado pelo service-worker.
+# Nao fala com o GCP, entao usa a KSA default (sem Workload Identity).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: service-downstream
+  labels:
+    app: service-downstream
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: service-downstream
+  template:
+    metadata:
+      labels:
+        app: service-downstream
+    spec:
+      containers:
+        - name: service-downstream
+          image: ${IMAGE}
+          ports:
+            - name: http
+              containerPort: 8080
+          # GKE Autopilot exige requests explicitos em todo pod
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3

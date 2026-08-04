@@ -381,6 +381,67 @@ políticas de alerta. O bootstrap (bucket de state e Workload Identity
 Federation) permanece intacto — retomar depois é só repetir o passo 7 em
 diante, sem precisar refazer o bootstrap.
 
+### 14. Implantar os microsserviços (gateway, service-api, service-worker, service-downstream)
+
+> Se você já tinha rodado o passo 4 (bootstrap) antes desta atualização
+> do repositório, rode o mesmo comando de novo em `infra/bootstrap` —
+> duas roles novas foram adicionadas à service account do CI, exigidas
+> pela identidade do GKE (Workload Identity) que esses serviços usam
+> para falar com o Pub/Sub.
+
+Além do podinfo, o repositório também implanta um fluxo de
+microsserviços (`cliente → gateway → service-api → Pub/Sub →
+service-worker → service-downstream`), usado para exercitar fila,
+tracing distribuído e autoscaling em fases futuras. O passo 7
+(`terraform-apply.yml`) já criou a fila do Pub/Sub e a identidade do GKE
+junto com o resto da infraestrutura — falta só implantar os serviços:
+
+```bash
+gh workflow run deploy-microservices.yml
+```
+
+```bash
+gh run watch
+```
+
+### 15. Testar o fluxo de microsserviços ponta a ponta
+
+```bash
+kubectl get pods
+```
+
+Devem aparecer `gateway`, `service-api`, `service-worker` e
+`service-downstream`, todos `1/1 Running` — junto com o `podinfo` do
+passo 9. Diferente dos outros serviços do projeto, o `gateway` é exposto
+via `LoadBalancer` (é o único ponto de entrada público desse fluxo):
+
+```bash
+kubectl get svc gateway
+```
+
+Aguarde o `EXTERNAL-IP` deixar de ser `<pending>` (leva 1-2 minutos), e
+então:
+
+```bash
+curl -X POST http://EXTERNAL_IP:8080/work -H 'Content-Type: application/json' -d '{"hello":"world"}'
+```
+
+Deve retornar `{"status":"accepted","request_id":"..."}` com HTTP 202.
+Confirme que a mensagem foi consumida e processada de ponta a ponta:
+
+```bash
+kubectl logs deployment/service-worker --tail=20
+```
+
+Deve aparecer o `request_id` recebido e o resultado devolvido pelo
+`service-downstream`.
+
+### 16. Destruir o ambiente da fase de microsserviços
+
+O mesmo passo 13 (`terraform-destroy.yml`) já cobre tudo: remove também a
+fila do Pub/Sub, a identidade do GKE e os 4 serviços novos, junto com o
+restante da infraestrutura.
+
 ---
 
 ## Padrões de engenharia seguidos
