@@ -38,6 +38,23 @@ tecnicamente "faça sentido" para o problema em questão.
 e os arquivos do repositório — não autentica no GCP/GKE. Todo o contexto
 necessário já deveria estar na issue escrita pelo log-analyzer.
 
+**Limitação real descoberta na fase 8 (testando contra os
+microsserviços)**: issues/labels criados usando o `GITHUB_TOKEN` padrão
+de outro workflow **não disparam** este `on: issues`, mesmo com o label
+certo — é uma proteção anti-recursão deliberada do GitHub Actions
+(evita que um workflow acione outro indefinidamente usando a mesma
+identidade automática). Como o `agent-log-analyzer.yml` cria a issue
+via `GH_TOKEN: ${{ github.token }}`, o disparo automático **nunca
+acontece de verdade** — precisa de uma ação com uma identidade
+"humana" de verdade (ex: remover e recolocar o label pela CLI/UI com
+sua própria sessão) para o evento contar. Decisão deliberada do projeto
+(2026-08-04): manter esse re-trigger manual como workaround documentado
+em vez de introduzir um Personal Access Token dedicado — um PAT
+resolveria o disparo automático, mas é uma credencial fixa armazenada
+como secret, o que vai contra o princípio de "zero standing
+credentials" que o projeto segue em todo o resto do pipeline (WIF em
+vez de chaves/tokens estáticos).
+
 ## Pré-requisito
 
 Este agente depende da fase 5 aplicar o label `agent-finding` em toda
@@ -46,9 +63,17 @@ dispara.
 
 ## Como testar
 
-Rode a fase 5 até ela abrir uma issue com o label `agent-finding` — o
-workflow desta fase deve disparar sozinho logo em seguida. Para
-acompanhar:
+Rode a fase 5 até ela abrir uma issue com o label `agent-finding`.
+**O workflow não dispara sozinho** (ver limitação do `GITHUB_TOKEN`
+acima) — force o evento removendo e recolocando o label com sua própria
+sessão do `gh` (não a do workflow):
+
+```bash
+gh issue edit <numero> --remove-label agent-finding
+gh issue edit <numero> --add-label agent-finding
+```
+
+Para acompanhar:
 
 ```bash
 gh run list --workflow=agent-pr-creator.yml

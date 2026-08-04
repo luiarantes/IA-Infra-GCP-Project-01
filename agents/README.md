@@ -9,11 +9,13 @@ mecânica, sem IA.
   incidente (via um pre-check barato, sem IA, sobre as métricas da fase
   4), investiga com Claude Code, e abre uma GitHub Issue com o
   diagnóstico — rotulada `agent-finding`. Não corrige nada.
-- **[pr-creator](pr-creator/)** (fase 6): acionado automaticamente quando
-  uma issue é rotulada `agent-finding`. Avalia o diagnóstico e decide se
-  existe uma correção de código razoável — se sim, abre um Pull Request
-  rotulado `agent-fix`; se não, comenta explicando por quê. Nunca aplica
-  nada diretamente.
+- **[pr-creator](pr-creator/)** (fase 6): desenhado para acionar
+  automaticamente quando uma issue é rotulada `agent-finding` — na
+  prática precisa de um empurrão manual, ver limitação do `GITHUB_TOKEN`
+  no [README do agente](pr-creator/README.md). Avalia o diagnóstico e
+  decide se existe uma correção de código razoável — se sim, abre um
+  Pull Request rotulado `agent-fix`; se não, comenta explicando por quê.
+  Nunca aplica nada diretamente.
 - **[verify-fix](verify-fix/)** (fase 7): acionado quando um PR rotulado
   `agent-fix` é mergeado. Espera o deploy automático acontecer, reconsulta
   a métrica original, e confirma na issue se o problema parou — ou reabre
