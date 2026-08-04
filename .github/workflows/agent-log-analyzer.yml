@@ -51,26 +51,45 @@ jobs:
 
           is_gt() { awk -v a="$1" -v b="$2" 'BEGIN{exit !(a>b)}'; }
 
+          # Regex dos apps monitorados (mesma lista usada nos
+          # pod_name_regex do modulo Terraform infra/modules/observability,
+          # ver infra/environments/test/main.tf) - atualize aqui tambem
+          # ao adicionar um app novo em apps/. Sem isso, o pre-check
+          # pegava qualquer container do namespace default, incluindo
+          # Jobs efemeros (load-test, chaos-test) - achado real de um
+          # agente (issue #10, 2026-08-04).
+          KNOWN_APPS_REGEX="(podinfo|gateway|service-api|service-worker|service-downstream)-.*"
+
           # Metricas classicas do Cloud Monitoring (timeSeries.list) -
-          # cobre restart_count, cpu e memoria.
+          # cobre restart_count, cpu e memoria. Escopado por
+          # cluster/namespace/pod_name - mesma logica das alert policies
+          # do Terraform (fase 8.4), pra nao confundir sinal dos nossos
+          # apps com ruido de containers do proprio GKE (kube-system,
+          # gke-gmp-system etc - esses tem limites minusculos e vivem
+          # naturalmente com utilizacao alta, gerando falso positivo).
           check_classic_metric() {
             local metric_type="$1"
             local aligner="$2"
-            local filter="metric.type%3D%22${metric_type}%22"
-            curl -s -H "Authorization: Bearer ${TOKEN}" \
-              "https://monitoring.googleapis.com/v3/projects/${GCP_PROJECT}/timeSeries?filter=${filter}&interval.startTime=${START}&interval.endTime=${END}&aggregation.alignmentPeriod=900s&aggregation.perSeriesAligner=${aligner}" \
+            local filter="resource.type=\"k8s_container\" AND resource.labels.cluster_name=\"${CLUSTER_NAME}\" AND resource.labels.namespace_name=\"default\" AND resource.labels.pod_name=monitoring.regex.full_match(\"${KNOWN_APPS_REGEX}\") AND metric.type=\"${metric_type}\""
+            curl -s -G -H "Authorization: Bearer ${TOKEN}" \
+              --data-urlencode "filter=${filter}" \
+              --data-urlencode "interval.startTime=${START}" \
+              --data-urlencode "interval.endTime=${END}" \
+              --data-urlencode "aggregation.alignmentPeriod=900s" \
+              --data-urlencode "aggregation.perSeriesAligner=${aligner}" \
+              "https://monitoring.googleapis.com/v3/projects/${GCP_PROJECT}/timeSeries" \
               | jq '[.timeSeries[]?.points[]?.value | (.int64Value // .doubleValue // "0") | tonumber] | max // 0'
           }
 
-          RESTART_DELTA=$(check_classic_metric "kubernetes.io%2Fcontainer%2Frestart_count" "ALIGN_DELTA")
+          RESTART_DELTA=$(check_classic_metric "kubernetes.io/container/restart_count" "ALIGN_DELTA")
           echo "restart_count (variacao na janela): $RESTART_DELTA"
           if is_gt "$RESTART_DELTA" 0; then FOUND=true; SIGNALS="${SIGNALS}restart_count "; fi
 
-          CPU_MAX=$(check_classic_metric "kubernetes.io%2Fcontainer%2Fcpu%2Flimit_utilization" "ALIGN_MEAN")
+          CPU_MAX=$(check_classic_metric "kubernetes.io/container/cpu/limit_utilization" "ALIGN_MEAN")
           echo "cpu limit_utilization (max): $CPU_MAX"
           if is_gt "$CPU_MAX" 0.8; then FOUND=true; SIGNALS="${SIGNALS}cpu "; fi
 
-          MEM_MAX=$(check_classic_metric "kubernetes.io%2Fcontainer%2Fmemory%2Flimit_utilization" "ALIGN_MEAN")
+          MEM_MAX=$(check_classic_metric "kubernetes.io/container/memory/limit_utilization" "ALIGN_MEAN")
           echo "memory limit_utilization (max): $MEM_MAX"
           if is_gt "$MEM_MAX" 0.8; then FOUND=true; SIGNALS="${SIGNALS}memory "; fi
 
