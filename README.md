@@ -471,6 +471,46 @@ os 4 serviços (`gateway` → `service-api` → `service-worker` →
 propagação automática de HTTP, já que o Pub/Sub não carrega o trace
 context sozinho.
 
+### 18. Testar carga real e autoscaling (fase 8.3)
+
+> Mesma observação do passo 17: fica no final do guia porque foi
+> implementado depois, pode ser feito a qualquer momento com o ambiente
+> no ar.
+
+GKE Autopilot não expõe node pools gerenciáveis — escalar sob carga
+aqui significa aumentar **réplicas de pod** via
+`HorizontalPodAutoscaler` (um por serviço, alvo de 50% de CPU,
+`minReplicas: 1`/`maxReplicas: 5`), não provisionar máquinas novas. Um
+`Job` do Kubernetes com [k6](https://k6.io) gera a carga (rampa de até
+50 usuários virtuais por ~3 minutos), disparado sob demanda:
+
+```bash
+gh workflow run load-test.yml
+```
+
+```bash
+gh run watch
+```
+
+O log do workflow mostra `kubectl get hpa`/`kubectl top pods` a cada 15s
+durante o teste (dá pra ver as réplicas subindo de 1 pra até 5 em tempo
+real) e o resumo do k6 no final (taxa de sucesso, requisições/segundo,
+latência). Pra acompanhar ao vivo localmente em vez de esperar o log do
+CI:
+
+```bash
+kubectl get hpa -w
+```
+
+Sob carga alta o suficiente, é esperado ver `Unhealthy` nos eventos do
+pod (`kubectl describe pod <pod>`) por *CFS throttling* — o container
+bate no limite de CPU antes do HPA terminar de escalar, e a probe de
+saúde demora mais que o timeout. É comportamento real do Kubernetes sob
+pressão, não um bug; o serviço continua disponível pelas réplicas
+saudáveis enquanto isso. Depois que a carga cai, o HPA aguarda ~5
+minutos (janela de estabilização padrão) antes de reduzir as réplicas
+de novo.
+
 ---
 
 ## Padrões de engenharia seguidos

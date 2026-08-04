@@ -1,0 +1,70 @@
+name: Load Test
+
+# Fase 8.3: gera carga real contra o fluxo de microsservicos (k6) pra
+# observar os HorizontalPodAutoscaler escalando replicas de verdade.
+# So workflow_dispatch, de proposito - nao roda em background continuo
+# (mesma logica de custo ja usada nos agentes de IA e no failsafe).
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  CLUSTER_NAME: aiops-gke
+  CLUSTER_LOCATION: us-central1
+
+jobs:
+  load-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ env.CLUSTER_NAME }}
+          location: ${{ env.CLUSTER_LOCATION }}
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Recriar o Job (Jobs sao imutaveis, precisa apagar o antigo)
+        run: kubectl delete job k6-load-test --ignore-not-found
+
+      - name: Gerar o ConfigMap a partir do script.js atual
+        run: |
+          kubectl create configmap k6-script \
+            --from-file=script.js=load-test/script.js \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Disparar o Job de carga
+        run: kubectl apply -f load-test/job.yaml
+
+      - name: Acompanhar HPA e uso de recursos durante a carga
+        run: |
+          set -uo pipefail
+          for i in $(seq 1 20); do
+            echo "=== $(date -u +%H:%M:%S) ==="
+            kubectl get hpa
+            kubectl top pods --sort-by=cpu 2>/dev/null || true
+            sleep 15
+          done &
+          MONITOR_PID=$!
+          kubectl wait --for=condition=complete job/k6-load-test --timeout=300s || \
+            kubectl wait --for=condition=failed job/k6-load-test --timeout=10s || true
+          kill "$MONITOR_PID" 2>/dev/null || true
+          wait "$MONITOR_PID" 2>/dev/null || true
+
+      - name: Resumo do k6
+        if: always()
+        run: kubectl logs job/k6-load-test
+
+      - name: Estado final do HPA
+        if: always()
+        run: kubectl get hpa

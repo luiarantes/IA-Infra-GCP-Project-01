@@ -1,0 +1,22 @@
+# HPA (fase 8.3) - ver apps/gateway/hpa.yaml para o raciocinio geral.
+# Multiplas replicas do worker viram multiplos subscribers pull
+# independentes na mesma subscription do Pub/Sub - o proprio servico
+# faz o balanceamento entre eles, sem configuracao extra.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: service-worker
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: service-worker
+  minReplicas: 1
+  maxReplicas: 5
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 50

@@ -1,9 +1,10 @@
 name: Deploy Microservices
 
 # Fase 8.1: build+push+deploy dos 4 servicos do fluxo de microsservicos
-# (gateway, service-api, service-worker, service-downstream). Workflow
-# separado do deploy-app.yml (que continua cuidando so do podinfo) -
-# nao compartilha triggers nem toca nos manifests do podinfo.
+# (gateway, service-api, service-worker, service-downstream), incluindo
+# os HPA de cada um (fase 8.3). Workflow separado do deploy-app.yml (que
+# continua cuidando so do podinfo) - nao compartilha triggers nem toca
+# nos manifests do podinfo.
 
 on:
   push:
@@ -73,6 +74,7 @@ jobs:
             export IMAGE="${AR_URL}/${SERVICE}:${{ github.sha }}"
             envsubst '${IMAGE} ${PROJECT_ID}' < "apps/${SERVICE}/deployment.yaml" | kubectl apply -f -
             kubectl apply -f "apps/${SERVICE}/service.yaml"
+            kubectl apply -f "apps/${SERVICE}/hpa.yaml"
           done
 
       - name: Aguardar rollout
