@@ -31,10 +31,15 @@ spec:
               value: "${PROJECT_ID}"
             - name: PUBSUB_TOPIC
               value: "microservices-queue"
-          # GKE Autopilot exige requests explicitos em todo pod
+          # GKE Autopilot exige requests explicitos em todo pod.
+          # cpu 150m (nao 100m) de proposito: o startup com OpenTelemetry
+          # e pesado o suficiente pra estourar sozinho o alvo de 50% do
+          # HPA (ver hpa.yaml) mesmo sem trafego real, fazendo o HPA
+          # escalar a toa a cada restart - achado real do agente
+          # pr-creator na issue #10 (2026-08-04).
           resources:
             requests:
-              cpu: 100m
+              cpu: 150m
               memory: 128Mi
             limits:
               cpu: 250m
