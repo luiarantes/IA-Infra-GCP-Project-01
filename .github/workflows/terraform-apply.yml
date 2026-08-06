@@ -61,3 +61,46 @@ jobs:
         run: |
           gh workflow enable cost-failsafe.yml
           echo "Cost Failsafe reativado: ambiente de pe, vigia de orcamento ativo."
+
+      - name: Verificar Cost Failsafe (dispara run e aguarda resultado)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          # Aguarda 3s para o enable propagar antes do dispatch.
+          sleep 3
+          gh workflow run cost-failsafe.yml --ref main
+
+          # Aguarda o run aparecer na lista (pode levar alguns segundos para ser registrado).
+          sleep 10
+          RUN_ID=$(gh run list --workflow=cost-failsafe.yml --limit=1 --json databaseId --jq '.[0].databaseId')
+          echo "Run de verificacao iniciado: ID $RUN_ID"
+
+          # Aguarda conclusao com timeout de 3 minutos (18 tentativas x 10s).
+          TENTATIVAS=0
+          while [ "$TENTATIVAS" -lt 18 ]; do
+            STATUS=$(gh run view "$RUN_ID" --json status,conclusion --jq '{status,conclusion}')
+            JOB_STATUS=$(echo "$STATUS" | jq -r '.status')
+            CONCLUSION=$(echo "$STATUS" | jq -r '.conclusion')
+
+            echo "[$TENTATIVAS] status=$JOB_STATUS conclusion=$CONCLUSION"
+
+            if [ "$JOB_STATUS" = "completed" ]; then
+              if [ "$CONCLUSION" = "success" ]; then
+                echo "Cost Failsafe verificado: rodou com sucesso apos o apply."
+                exit 0
+              else
+                echo "ATENCAO: Cost Failsafe habilitado, mas o run de verificacao falhou (conclusion=$CONCLUSION)."
+                echo "Verifique: https://github.com/$GH_REPO/actions/runs/$RUN_ID"
+                # Nao bloqueia o apply (ambiente subiu com sucesso); mas o
+                # status deste passo fica failed para aparecer nas annotations.
+                exit 1
+              fi
+            fi
+
+            TENTATIVAS=$((TENTATIVAS + 1))
+            sleep 10
+          done
+
+          echo "ATENCAO: timeout aguardando o run de verificacao ($RUN_ID). Verifique manualmente."
+          exit 1
