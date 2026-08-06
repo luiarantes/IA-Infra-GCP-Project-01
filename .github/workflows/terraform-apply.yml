@@ -10,6 +10,7 @@ on:
 permissions:
   contents: read
   id-token: write
+  actions: write
 
 env:
   TF_WORKING_DIR: infra/environments/test
@@ -52,3 +53,11 @@ jobs:
       - name: Terraform Apply
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: terraform apply -auto-approve -input=false
+
+      - name: Reativar Cost Failsafe (ambiente provisionado)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh workflow enable cost-failsafe.yml
+          echo "Cost Failsafe reativado: ambiente de pe, vigia de orcamento ativo."

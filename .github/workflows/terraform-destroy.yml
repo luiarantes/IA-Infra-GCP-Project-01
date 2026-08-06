@@ -13,6 +13,7 @@ on:
 permissions:
   contents: read
   id-token: write
+  actions: write
 
 env:
   TF_WORKING_DIR: infra/environments/test
@@ -58,3 +59,11 @@ jobs:
       - name: Terraform Destroy
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: terraform destroy -auto-approve -input=false
+
+      - name: Desativar Cost Failsafe (ambiente destruido)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh workflow disable cost-failsafe.yml
+          echo "Cost Failsafe desativado: nao ha ambiente a vigiar ate o proximo apply."
