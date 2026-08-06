@@ -36,9 +36,23 @@ jobs:
       - name: Puxar mensagens do topico de orcamento
         id: pull
         run: |
-          gcloud pubsub subscriptions pull budget-alerts-failsafe-pull \
+          # A subscription so existe com o ambiente de pe (modulo budget).
+          # Depois de um terraform-destroy ela some, e o pull retorna
+          # NOT_FOUND - nesse caso nao ha gasto a vigiar, entao o job
+          # termina ok em vez de falhar a cada 30min ate o proximo apply.
+          if ! gcloud pubsub subscriptions pull budget-alerts-failsafe-pull \
             --auto-ack --limit=20 --format=json \
-            --project="${GCP_PROJECT}" > /tmp/pubsub_messages.json
+            --project="${GCP_PROJECT}" > /tmp/pubsub_messages.json 2> /tmp/pubsub_error.log; then
+            if grep -q "NOT_FOUND" /tmp/pubsub_error.log; then
+              echo "Subscription de orcamento nao encontrada: ambiente destruido, nada a vigiar."
+              echo "ratio=0" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            # Qualquer outro erro (permissao, rede) continua derrubando o
+            # job - falha real de um failsafe precisa gerar alerta.
+            cat /tmp/pubsub_error.log
+            exit 1
+          fi
 
           RATIO=$(jq -r '
             [.[]?.message.data // empty]
