@@ -132,3 +132,127 @@ module "microservices_trace_workload_identity" {
 
   depends_on = [module.gke, google_project_service.apis]
 }
+
+# =============================================================================
+# BuscaCEP — identidade de runtime dos pods
+# Publisher (API) e subscriber (worker) compartilham a mesma KSA; roles
+# distintas ficam no escopo de projeto, nao por topico, o que e suficiente
+# para um ambiente de teste com um unico projeto.
+# =============================================================================
+module "buscacep_workload_identity" {
+  source = "../../modules/workload-identity"
+
+  project_id     = var.project_id
+  gsa_account_id = "buscacep-workload"
+  ksa_name       = "buscacep-ksa"
+  namespace      = "default"
+  roles = [
+    "roles/pubsub.publisher",
+    "roles/pubsub.subscriber",
+  ]
+
+  depends_on = [module.gke, google_project_service.apis]
+}
+
+# =============================================================================
+# BuscaCEP — Pub/Sub
+# Topico principal + subscription com dead-letter + DLQ propria.
+# A DLQ e um cenario de falha intencional para o agente AIOps: quando
+# mensagens excedem max_delivery_attempts elas sao redirecionadas para
+# cep-consultado-dlq, que pode ser monitorado pelo oldest_unacked_message_age.
+# =============================================================================
+resource "google_pubsub_topic" "buscacep" {
+  project = var.project_id
+  name    = "cep-consultado"
+
+  depends_on = [google_project_service.apis]
+}
+
+resource "google_pubsub_topic" "buscacep_dlq" {
+  project = var.project_id
+  name    = "cep-consultado-dlq"
+
+  depends_on = [google_project_service.apis]
+}
+
+resource "google_pubsub_subscription" "buscacep" {
+  project = var.project_id
+  name    = "cep-consultado-sub"
+  topic   = google_pubsub_topic.buscacep.name
+
+  ack_deadline_seconds       = 20
+  message_retention_duration = "600s" # 10 min — mensagens nao consumidas somem logo
+
+  dead_letter_policy {
+    dead_letter_topic     = google_pubsub_topic.buscacep_dlq.name
+    max_delivery_attempts = 5
+  }
+
+  depends_on = [google_pubsub_topic.buscacep, google_pubsub_topic.buscacep_dlq]
+}
+
+resource "google_pubsub_subscription" "buscacep_dlq" {
+  project              = var.project_id
+  name                 = "cep-consultado-dlq-sub"
+  topic                = google_pubsub_topic.buscacep_dlq.name
+  ack_deadline_seconds = 60
+
+  depends_on = [google_pubsub_topic.buscacep_dlq]
+}
+
+# O agente de servico do Pub/Sub precisa publicar na DLQ quando uma mensagem
+# excede max_delivery_attempts — sem este binding a dead-letter policy e
+# ignorada silenciosamente.
+resource "google_pubsub_topic_iam_member" "pubsub_sa_dlq_publisher" {
+  project = var.project_id
+  topic   = google_pubsub_topic.buscacep_dlq.name
+  role    = "roles/pubsub.publisher"
+  member  = "serviceAccount:service-${var.project_number}@gcp-sa-pubsub.iam.gserviceaccount.com"
+}
+
+# =============================================================================
+# BuscaCEP — observabilidade
+# Mesmas metricas HTTP (5xx/latencia) que o podinfo; o worker nao expoe
+# /metrics entao nao tem PodMonitoring proprio — so os sinais nativos do GKE.
+# =============================================================================
+module "observability_buscacep" {
+  source = "../../modules/observability"
+
+  project_id     = var.project_id
+  cluster_name   = var.cluster_name
+  app_label      = "buscacep-api"
+  pod_name_regex = "buscacep-api-.*"
+
+  depends_on = [module.gke]
+}
+
+# =============================================================================
+# apps-deploy — GSA compartilhada para os repos de app fazerem CI/CD
+# Cada repo de app recebe um binding WIF proprio nesta GSA; o acesso nao
+# se expande automaticamente para novos repos — e necessario adicionar
+# um google_service_account_iam_member por repo novo.
+# =============================================================================
+resource "google_service_account" "apps_deploy" {
+  project      = var.project_id
+  account_id   = "apps-deploy"
+  display_name = "Apps Deploy — CI/CD dos repos de aplicacao"
+}
+
+resource "google_project_iam_member" "apps_deploy_roles" {
+  for_each = toset([
+    "roles/artifactregistry.writer", # push de imagens no AR
+    "roles/container.developer",     # kubectl apply no cluster
+  ])
+
+  project = var.project_id
+  role    = each.value
+  member  = "serviceAccount:${google_service_account.apps_deploy.email}"
+}
+
+# Binding WIF para o repo IA-App-GCP-Project-01 (BuscaCEP e futuras apps
+# neste repo). Para cada novo repo de app, adicionar um bloco analogo.
+resource "google_service_account_iam_member" "apps_deploy_wif_app01" {
+  service_account_id = google_service_account.apps_deploy.name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "principalSet://iam.googleapis.com/projects/${var.project_number}/locations/global/workloadIdentityPools/github-actions-pool/attribute.repository/luiarantes/IA-App-GCP-Project-01"
+}
