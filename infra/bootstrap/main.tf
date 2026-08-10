@@ -92,8 +92,11 @@ resource "google_iam_workload_identity_pool_provider" "github_provider" {
     "attribute.ref"        = "assertion.ref"
   }
 
-  # Restringe o provider para so aceitar tokens vindos deste repositorio
-  attribute_condition = "assertion.repository == \"${var.github_org}/${var.github_repo}\""
+  # Aceita tokens de qualquer repo do mesmo usuario/org - a restricao
+  # por repositorio especifico e feita no binding de cada service account,
+  # nao aqui. Isso permite adicionar novos repos de app sem precisar
+  # re-aplicar o bootstrap a cada vez.
+  attribute_condition = "assertion.repository_owner == \"${var.github_org}\""
 
   oidc {
     issuer_uri = "https://token.actions.githubusercontent.com"
