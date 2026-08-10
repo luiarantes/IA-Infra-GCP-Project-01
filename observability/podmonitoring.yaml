@@ -14,3 +14,26 @@ spec:
     - port: http
       interval: 30s
       path: /metrics
+---
+# Mesma ideia para o buscacep-api, que expoe /metrics no formato Prometheus
+# na porta 8000 (http_requests_total, http_request_duration_seconds). Sem
+# este PodMonitoring o GMP nunca raspa essas metricas, e as politicas de
+# alerta de 5xx e de latencia criadas por module.observability_buscacep
+# (infra/environments/test/main.tf) avaliam um conjunto vazio — ou seja,
+# nunca disparam por erro real do app.
+#
+# A porta e' declarada pelo numero (8000) em vez do nome porque o
+# deployment do buscacep-api vive em outro repositorio; o numero e' o que
+# esta' confirmado pelo scrape manual do pod.
+apiVersion: monitoring.googleapis.com/v1
+kind: PodMonitoring
+metadata:
+  name: buscacep-api
+spec:
+  selector:
+    matchLabels:
+      app: buscacep-api
+  endpoints:
+    - port: 8000
+      interval: 30s
+      path: /metrics

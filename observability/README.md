@@ -12,8 +12,8 @@ self-hosted, para não gerar custo extra de compute.
   Prometheus](https://cloud.google.com/stackdriver/docs/managed-prometheus)
   (GMP), também ativo por padrão no Autopilot. O arquivo
   [`podmonitoring.yaml`](podmonitoring.yaml) diz ao GMP para fazer scrape
-  do endpoint `/metrics` do podinfo — sem isso, só métricas de sistema
-  (CPU/memória) seriam coletadas, não as de aplicação.
+  do endpoint `/metrics` do podinfo e do `buscacep-api` — sem isso, só
+  métricas de sistema (CPU/memória) seriam coletadas, não as de aplicação.
 - **Métrica baseada em log + alerta**: `infra/modules/observability/`
   (Terraform) cria uma métrica que conta logs de severidade `ERROR+` do
   `sample-app` e uma política de alerta no Cloud Monitoring que dispara
