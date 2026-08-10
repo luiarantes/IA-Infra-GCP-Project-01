@@ -184,7 +184,9 @@ resource "google_pubsub_subscription" "buscacep" {
   message_retention_duration = "600s" # 10 min — mensagens nao consumidas somem logo
 
   dead_letter_policy {
-    dead_letter_topic     = google_pubsub_topic.buscacep_dlq.name
+    # .id retorna o nome completo do recurso (projects/{proj}/topics/{name}),
+    # exigido pela API. .name retorna apenas o nome curto e causa erro 400.
+    dead_letter_topic     = google_pubsub_topic.buscacep_dlq.id
     max_delivery_attempts = 5
   }
 
