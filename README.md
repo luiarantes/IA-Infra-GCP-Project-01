@@ -511,6 +511,66 @@ saudáveis enquanto isso. Depois que a carga cai, o HPA aguarda ~5
 minutos (janela de estabilização padrão) antes de reduzir as réplicas
 de novo.
 
+### 19. Testar resiliência com o Chaos Toolkit (fase 8, chaos engineering)
+
+Diferente do Chaos Mesh (testado e descartado nesta fase — o GKE
+Autopilot bloqueia o `chaos-daemon` privilegiado que ele exige para
+experimentos de rede/stress, rejeitado pelo GKE Warden com `hostPID`/
+container privilegiado/`hostPath` em modo escrita, todos negados a
+workloads que não são do próprio sistema GKE), o
+[Chaos Toolkit](https://chaostoolkit.org/) só usa a API padrão do
+Kubernetes (matar pod, checar estado) — nenhum componente privilegiado,
+roda como `Job` sob demanda (mesmo padrão sem custo recorrente do
+`load-test.yml`).
+
+Dois experimentos versionados em [`chaos-test/`](chaos-test/):
+
+```bash
+gh workflow run chaos-test.yml -f scenario=kill-gateway
+```
+
+```bash
+gh workflow run chaos-test.yml -f scenario=kill-worker-mid-message
+```
+
+O primeiro mata um pod do `gateway` e confirma que o Deployment se
+recupera sozinho. O segundo publica uma mensagem real via `POST /work`
+e mata o `service-worker` logo em seguida — confirma que o Pub/Sub
+reentrega a mensagem pro pod novo (o `ack()` só acontece depois do
+processamento, nunca antes dele). O log do workflow mostra o *journal*
+do Chaos Toolkit com o resultado de cada etapa. Detalhes de cada
+experimento em [`chaos-test/README.md`](chaos-test/README.md).
+
+### 20. Observabilidade e agentes generalizados para múltiplos apps
+
+A stack de observabilidade e os agentes de IA não ficam mais amarrados
+ao podinfo: o módulo `infra/modules/observability` é instanciado uma
+vez por app (cada instância com seu próprio `pod_name_regex`, pra não
+misturar sinais de apps diferentes rodando no mesmo namespace), e os
+prompts dos agentes (`agents/log-analyzer/TASK.md`,
+`agents/pr-creator/TASK.md`) não citam nome de app nem porta fixa —
+descobrem isso dinamicamente durante a própria investigação.
+
+### 21. Conectar um repositório de aplicação externo
+
+A infraestrutura deste repositório foi desenhada para hospedar mais de
+uma aplicação, cada uma no seu próprio repositório GitHub, sem refazer
+o bootstrap a cada app novo: o Workload Identity Pool aceita qualquer
+repositório do mesmo usuário/organização
+(`assertion.repository_owner`, não mais um repositório fixo), e uma GSA
+compartilhada `apps-deploy` (`roles/artifactregistry.writer` +
+`roles/container.developer`) recebe um binding restrito por
+repositório (`google_service_account_iam_member`) — least privilege:
+nenhum repositório herda acesso automaticamente, precisa de um binding
+explícito em `infra/environments/test/main.tf` antes de funcionar.
+
+Exemplo real já conectado dessa forma:
+[**BuscaCEP**](https://github.com/luiarantes/IA-App-GCP-Project-01) —
+API de consulta de CEP (FastAPI + ViaCEP + worker Pub/Sub), com deploy
+próprio autenticado por essa GSA, rodando no mesmo cluster e já testada
+pelos mesmos agentes de self-healing deste repositório contra um
+incidente real (métricas ausentes por falta de `PodMonitoring`).
+
 ---
 
 ## Padrões de engenharia seguidos
