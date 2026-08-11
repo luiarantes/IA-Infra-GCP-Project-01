@@ -27,3 +27,7 @@ service-account*.json
 # Notas pessoais de estudo - nunca vao pro repo publico, mas ficam
 # sincronizadas no Drive pra acesso em sessoes/chats futuros
 /notas-privadas/
+
+# Contexto pra sessoes de IA (Claude Code) - mesma logica do
+# notas-privadas/, nunca vai pro repo publico
+/CLAUDE.md
