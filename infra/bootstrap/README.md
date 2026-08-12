@@ -58,6 +58,32 @@ gcloud billing accounts add-iam-policy-binding SEU_BILLING_ACCOUNT_ID \
 Se preferir não conceder esse acesso, defina `enable_budget_alert = false`
 no ambiente de teste e configure o orçamento manualmente no Console.
 
+## Sobre o BigQuery Billing Export (FinOps)
+
+O `terraform apply` deste diretório cria o dataset `billing_export` no
+BigQuery — persistente, sobrevive aos ciclos de `terraform-destroy`/
+`terraform-apply` do ambiente de teste (histórico de custo não pode
+sumir toda vez que o ambiente é recriado).
+
+**O dataset por si só não exporta nada.** O link "exportar billing pra
+este dataset" é configuração da *billing account*, só disponível pelo
+Console (não existe comando `gcloud`/API pública pra isso):
+
+1. Console → **Faturamento** → **Faturamento e custos** → **Exportação
+   de faturamento**
+2. Na aba **BigQuery export**, clique em **Editar configurações** em
+   "Standard usage cost" (custo padrão) e/ou "Detailed usage cost"
+   (custo detalhado com SKU, se disponível no seu plano)
+3. Selecione o projeto `SEU_PROJECT_ID` e o dataset `billing_export`
+
+Exige o papel **Administrador de conta de faturamento** (Billing
+Account Administrator) na billing account — diferente do "Gerente de
+custos" (`roles/billing.costsManager`) concedido acima, que só cobre
+orçamentos, não a exportação. Depois de configurado, o export leva
+algumas horas para começar a popular o dataset, e os custos do dia
+corrente costumam levar 24-48h para ficar refletidos (atraso normal do
+pipeline de faturamento do Google, não um problema da configuração).
+
 ## State deste bootstrap
 
 Este diretório usa **state local** de propósito (arquivo `terraform.tfstate`

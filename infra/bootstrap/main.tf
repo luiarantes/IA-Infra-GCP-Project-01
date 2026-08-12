@@ -6,11 +6,35 @@ resource "google_project_service" "bootstrap_apis" {
     "cloudresourcemanager.googleapis.com",
     "sts.googleapis.com",
     "storage.googleapis.com",
+    "bigquery.googleapis.com",
   ])
 
   project            = var.project_id
   service            = each.value
   disable_on_destroy = false
+}
+
+# Dataset do BigQuery Billing Export (FinOps) - fica no bootstrap, nao no
+# ambiente efemero (infra/environments/test), de proposito: o objetivo e
+# manter historico de custo atraves dos ciclos de destroy/apply do
+# ambiente de teste. Se estivesse em environments/test, o historico seria
+# apagado junto com o resto a cada terraform-destroy.
+#
+# O Terraform so cria o dataset - o link real "exportar billing pra este
+# dataset" e configuracao da billing account, so disponivel no Console
+# (nao existe comando gcloud/API publica pra isso). Depois do apply:
+# Console -> Billing -> Faturamento e custos -> Exportacao de faturamento
+# -> BigQuery export -> Editar configuracoes -> selecionar o dataset
+# "billing_export" criado aqui. Exige papel "Administrador de conta de
+# faturamento" na billing account (diferente do "Gerente de custos" ja
+# concedido no passo 5 do README, que so cobre orcamentos).
+resource "google_bigquery_dataset" "billing_export" {
+  project     = var.project_id
+  dataset_id  = "billing_export"
+  location    = "US" # multi-regiao - padrao recomendado pelo Google pra billing export
+  description = "Exportacao do Cloud Billing (custo detalhado) - alimenta consultas de FinOps. Ver infra/bootstrap/README.md."
+
+  depends_on = [google_project_service.bootstrap_apis]
 }
 
 # Bucket para o state remoto do Terraform usado pelos ambientes (fase 1+)
@@ -61,8 +85,8 @@ resource "google_project_iam_member" "github_actions_roles" {
     "roles/serviceusage.serviceUsageAdmin",
     "roles/monitoring.editor",
     "roles/logging.admin",
-    "roles/pubsub.admin", # topico de alertas do modulo budget + fila da fase 8
-    "roles/iam.serviceAccountAdmin",       # criar a GSA de Workload Identity do GKE (fase 8) e seu binding
+    "roles/pubsub.admin",                    # topico de alertas do modulo budget + fila da fase 8
+    "roles/iam.serviceAccountAdmin",         # criar a GSA de Workload Identity do GKE (fase 8) e seu binding
     "roles/resourcemanager.projectIamAdmin", # conceder roles de projeto a essa GSA nova
   ])
 
