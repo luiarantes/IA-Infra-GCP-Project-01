@@ -169,7 +169,14 @@ resource "google_monitoring_alert_policy" "high_memory" {
 # que o app expoe via PodMonitoring. Tipo de condicao diferente dos
 # anteriores (condition_prometheus_query_language, nao condition_threshold).
 # So criado se enable_http_metrics=true - nem todo app tem essa metrica
-# (ver observability/podmonitoring.yaml, hoje so cobre o podinfo).
+# (ver observability/podmonitoring.yaml).
+#
+# Filtrado por label "pod" (fase 8.4+ correcao) usando o mesmo
+# pod_name_regex do resto do modulo - sem isso, um 5xx em QUALQUER app
+# com metricas HTTP habilitadas disparava a politica de TODOS eles ao
+# mesmo tempo (achado real, issues #5 e #11 de forma independente). O
+# label "pod" e padrao do Managed Prometheus/GMP em metricas coletadas
+# via PodMonitoring, mesma convencao usada nas metricas nativas do GKE.
 resource "google_monitoring_alert_policy" "http_5xx_errors" {
   count = var.enable_http_metrics ? 1 : 0
 
@@ -181,7 +188,7 @@ resource "google_monitoring_alert_policy" "http_5xx_errors" {
     display_name = "erros 5xx nos ultimos 5 minutos"
 
     condition_prometheus_query_language {
-      query    = "sum(rate(http_requests_total{status=~\"5..\"}[5m])) > ${var.http_5xx_rate_threshold}"
+      query    = "sum(rate(http_requests_total{status=~\"5..\", pod=~\"${var.pod_name_regex}\"}[5m])) > ${var.http_5xx_rate_threshold}"
       duration = "60s"
     }
   }
@@ -193,7 +200,8 @@ resource "google_monitoring_alert_policy" "http_5xx_errors" {
 
 # Latencia p95: histogram_quantile precisa de PromQL de verdade - nao da
 # pra fazer isso com condition_threshold comum sobre as buckets do
-# histograma. Mesma condicao de enable_http_metrics do alerta de 5xx.
+# histograma. Mesma condicao de enable_http_metrics e mesmo filtro por
+# "pod" do alerta de 5xx acima.
 resource "google_monitoring_alert_policy" "high_latency" {
   count = var.enable_http_metrics ? 1 : 0
 
@@ -205,7 +213,7 @@ resource "google_monitoring_alert_policy" "high_latency" {
     display_name = "p95 de latencia acima do limite"
 
     condition_prometheus_query_language {
-      query    = "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)) > ${var.latency_p95_threshold_seconds}"
+      query    = "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{pod=~\"${var.pod_name_regex}\"}[5m])) by (le)) > ${var.latency_p95_threshold_seconds}"
       duration = "60s"
     }
   }

@@ -1,9 +1,17 @@
 name: Agent - Verify Fix
 
 # Fase 7 (parte A): dispara quando um PR do agente (label "agent-fix") e
-# mergeado. Espera o deploy-app.yml aplicar a mudanca, depois reconsulta
-# a mesma metrica de restart_count usada nas fases 5/6 para confirmar se
-# o problema parou.
+# mergeado. Espera o deploy aplicar a mudanca, depois reconsulta o sinal
+# correto para confirmar se o problema parou.
+#
+# Generalizado (correcao pos-fase 8.4): antes sempre rechecava
+# restart_count, nao importa a categoria real da issue original - agora
+# le os labels "signal:<categoria>" e "app:<nome>" que o pr-creator
+# aplica no PR (ver agents/pr-creator/TASK.md) e reconsulta o sinal
+# certo, escopado pro app certo. Sem esses labels (ex: PR aberto
+# manualmente, sem passar pelo agente), cai de volta no comportamento
+# antigo (restart_count, so escopado por cluster/namespace, sem filtro
+# de pod) - nunca quebra por falta de label.
 #
 # Sem Claude de proposito: isso e' uma checagem mecanica (comparar um
 # numero antes/depois), nao um julgamento - nem toda etapa de um sistema
@@ -19,6 +27,7 @@ permissions:
 
 env:
   GCP_PROJECT: ${{ secrets.GCP_PROJECT_ID }}
+  CLUSTER_NAME: aiops-gke
 
 jobs:
   verify:
@@ -31,32 +40,109 @@ jobs:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
 
-      - name: Extrair numero da issue a partir do nome da branch
+      - name: Extrair numero da issue e labels de sinal/app do PR
         id: extract
         run: |
           BRANCH="${{ github.event.pull_request.head.ref }}"
           ISSUE_NUMBER=$(echo "$BRANCH" | grep -oE '[0-9]+$' || true)
           echo "issue_number=${ISSUE_NUMBER}" >> "$GITHUB_OUTPUT"
 
-      # Espera o deploy-app.yml (disparado pelo mesmo merge) terminar de
-      # aplicar a mudanca antes de checar se o problema parou.
+          LABELS='${{ toJson(github.event.pull_request.labels.*.name) }}'
+          SIGNAL=$(echo "$LABELS" | jq -r '.[] | select(startswith("signal:")) | sub("signal:"; "")' | head -1)
+          APP=$(echo "$LABELS" | jq -r '.[] | select(startswith("app:")) | sub("app:"; "")' | head -1)
+          echo "signal=${SIGNAL}" >> "$GITHUB_OUTPUT"
+          echo "app=${APP}" >> "$GITHUB_OUTPUT"
+          echo "PR labels -> signal='${SIGNAL}' app='${APP}' (vazio = fallback pro comportamento generico)"
+
+      # Espera o deploy (disparado pelo mesmo merge) terminar de aplicar
+      # a mudanca antes de checar se o problema parou.
       - name: Aguardar o deploy da correcao
         if: steps.extract.outputs.issue_number != ''
         run: sleep 300
 
-      - name: Reconsultar restart_count pos-deploy
+      - name: Reconsultar o sinal pos-deploy
         id: check
         if: steps.extract.outputs.issue_number != ''
         run: |
           END=$(date -u +%Y-%m-%dT%H:%M:%SZ)
           START=$(date -u -d '5 minutes ago' +%Y-%m-%dT%H:%M:%SZ)
           TOKEN=$(gcloud auth print-access-token)
-          FILTER='metric.type%3D%22kubernetes.io%2Fcontainer%2Frestart_count%22'
-          RESPONSE=$(curl -s -H "Authorization: Bearer ${TOKEN}" \
-            "https://monitoring.googleapis.com/v3/projects/${GCP_PROJECT}/timeSeries?filter=${FILTER}&interval.startTime=${START}&interval.endTime=${END}&aggregation.alignmentPeriod=300s&aggregation.perSeriesAligner=ALIGN_DELTA")
-          MAX_DELTA=$(echo "$RESPONSE" | jq '[.timeSeries[]?.points[]?.value.int64Value // "0" | tonumber] | max // 0')
-          echo "Variacao de restart_count pos-deploy: $MAX_DELTA"
-          echo "max_delta=${MAX_DELTA}" >> "$GITHUB_OUTPUT"
+          SIGNAL="${{ steps.extract.outputs.signal }}"
+          APP="${{ steps.extract.outputs.app }}"
+
+          # Regex de pod so entra no filtro se tivermos o nome do app -
+          # no fallback (sem label "app:"), fica sem essa parte, so
+          # cluster+namespace (ainda bem melhor que sem filtro nenhum).
+          POD_FILTER=""
+          if [ -n "$APP" ]; then
+            POD_FILTER=" AND resource.labels.pod_name=monitoring.regex.full_match(\"${APP}-.*\")"
+          fi
+
+          check_classic_metric() {
+            local metric_type="$1" aligner="$2"
+            local filter="resource.type=\"k8s_container\" AND resource.labels.cluster_name=\"${CLUSTER_NAME}\" AND resource.labels.namespace_name=\"default\"${POD_FILTER} AND metric.type=\"${metric_type}\""
+            curl -s -G -H "Authorization: Bearer ${TOKEN}" \
+              --data-urlencode "filter=${filter}" \
+              --data-urlencode "interval.startTime=${START}" \
+              --data-urlencode "interval.endTime=${END}" \
+              --data-urlencode "aggregation.alignmentPeriod=300s" \
+              --data-urlencode "aggregation.perSeriesAligner=${aligner}" \
+              "https://monitoring.googleapis.com/v3/projects/${GCP_PROJECT}/timeSeries" \
+              | jq '[.timeSeries[]?.points[]?.value | (.int64Value // .doubleValue // "0") | tonumber] | max // 0'
+          }
+
+          query_promql() {
+            curl -s -G -H "Authorization: Bearer ${TOKEN}" \
+              --data-urlencode "query=$1" \
+              "https://monitoring.googleapis.com/v1/projects/${GCP_PROJECT}/location/global/prometheus/api/v1/query" \
+              | jq -r '.data.result[0].value[1] // "0"'
+          }
+
+          # Monta o matcher de pod separado (sem virgula embutida) - as
+          # duas queries abaixo tem formatos diferentes (uma ja tem um
+          # matcher dentro de {}, a outra comeca vazia), entao a virgula
+          # soh entra quando de fato ha dois matchers pra combinar.
+          POD_MATCHER=""
+          [ -n "$APP" ] && POD_MATCHER="pod=~\"${APP}-.*\""
+
+          case "$SIGNAL" in
+            cpu)
+              VALUE=$(check_classic_metric "kubernetes.io/container/cpu/limit_utilization" "ALIGN_MEAN")
+              THRESHOLD="0.8"; LABEL="uso de CPU (fracao do limite)" ;;
+            memory)
+              VALUE=$(check_classic_metric "kubernetes.io/container/memory/limit_utilization" "ALIGN_MEAN")
+              THRESHOLD="0.8"; LABEL="uso de memoria (fracao do limite)" ;;
+            http_5xx)
+              if [ -n "$POD_MATCHER" ]; then
+                Q="sum(rate(http_requests_total{status=~\"5..\", ${POD_MATCHER}}[5m]))"
+              else
+                Q='sum(rate(http_requests_total{status=~"5.."}[5m]))'
+              fi
+              VALUE=$(query_promql "$Q")
+              THRESHOLD="0"; LABEL="taxa de erros 5xx/s" ;;
+            latency)
+              if [ -n "$POD_MATCHER" ]; then
+                Q="histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{${POD_MATCHER}}[5m])) by (le))"
+              else
+                Q='histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{}[5m])) by (le))'
+              fi
+              VALUE=$(query_promql "$Q")
+              THRESHOLD="1"; LABEL="latencia p95 (s)" ;;
+            *)
+              # restart_count (default) OU fallback sem label "signal:" nenhum
+              VALUE=$(check_classic_metric "kubernetes.io/container/restart_count" "ALIGN_DELTA")
+              THRESHOLD="0"; LABEL="variacao de restart_count" ;;
+          esac
+
+          is_gt() { awk -v a="$1" -v b="$2" 'BEGIN{exit !(a>b)}'; }
+          echo "${LABEL}: ${VALUE} (limite: >${THRESHOLD})"
+          echo "value=${VALUE}" >> "$GITHUB_OUTPUT"
+          echo "label=${LABEL}" >> "$GITHUB_OUTPUT"
+          if is_gt "$VALUE" "$THRESHOLD"; then
+            echo "still_bad=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "still_bad=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Comentar resultado na issue original
         if: steps.extract.outputs.issue_number != ''
@@ -69,9 +155,13 @@ jobs:
         run: |
           ISSUE="${{ steps.extract.outputs.issue_number }}"
           PR="${{ github.event.pull_request.number }}"
-          if [ "${{ steps.check.outputs.max_delta }}" = "0" ]; then
-            gh issue comment "$ISSUE" --body "**Verificação automática pós-merge**: nenhum restart novo detectado nos 5 minutos após o deploy do PR #${PR}. A correção parece ter resolvido o problema."
+          LABEL="${{ steps.check.outputs.label }}"
+          VALUE="${{ steps.check.outputs.value }}"
+          APP="${{ steps.extract.outputs.app }}"
+          ESCOPO="${APP:-todo o namespace default (sem label 'app:' no PR, fallback generico)}"
+          if [ "${{ steps.check.outputs.still_bad }}" = "false" ]; then
+            gh issue comment "$ISSUE" --body "**Verificação automática pós-merge**: ${LABEL} = ${VALUE} nos 5 minutos após o deploy do PR #${PR} (escopo: ${ESCOPO}) — dentro do esperado. A correção parece ter resolvido o problema."
           else
-            gh issue comment "$ISSUE" --body "**Verificação automática pós-merge**: ainda foram detectados restarts após o deploy do PR #${PR} — o problema pode não ter sido totalmente resolvido. Reabrindo para investigação humana."
+            gh issue comment "$ISSUE" --body "**Verificação automática pós-merge**: ${LABEL} = ${VALUE} ainda acima do esperado após o deploy do PR #${PR} (escopo: ${ESCOPO}) — o problema pode não ter sido totalmente resolvido. Reabrindo para investigação humana."
             gh issue reopen "$ISSUE"
           fi

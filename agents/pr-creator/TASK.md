@@ -31,11 +31,29 @@ A issue #${ISSUE_NUMBER} foi aberta por um agente de observabilidade
    - Faça a alteração mínima necessária no(s) arquivo(s) relevante(s)
    - `git add`, `git commit` (mensagem curta explicando o quê e por quê),
      `git push`
-   - Abra o PR com **`gh pr create --label agent-fix`** (o label é
-     obrigatório — é o que aciona a verificação pós-merge, na fase
-     seguinte). Se o label não existir, rode
-     `gh label create agent-fix --color 0E8A16 --description "Fix proposto por agente"`
-     e tente de novo. No corpo do PR, inclua:
+   - Abra o PR com **três labels obrigatórios**:
+     `gh pr create --label agent-fix --label "signal:<categoria>" --label "app:<nome-do-app>"`
+     - `agent-fix`: já existente — é o que aciona a verificação pós-merge.
+     - `signal:<categoria>`: qual sinal *este fix específico* resolve —
+       exatamente um entre `restart_count`, `cpu`, `memory`, `http_5xx`,
+       `latency` (a categoria já vem identificada na issue). Se a issue
+       tiver múltiplos sinais mas seu fix só resolve um deles, use a
+       categoria do que você está de fato corrigindo.
+     - `app:<nome-do-app>`: o nome do app afetado (ex: `podinfo`,
+       `service-api`, `buscacep-api`) — mesmo nome usado no
+       `app_label`/prefixo dos pods dele.
+     Se algum desses labels não existir ainda, crie antes de tentar de
+     novo:
+     ```
+     gh label create agent-fix --color 0E8A16 --description "Fix proposto por agente"
+     gh label create "signal:<categoria>" --color 5319E7 --description "Categoria do sinal que o fix resolve"
+     gh label create "app:<nome-do-app>" --color 1D76DB --description "App afetado pelo fix"
+     ```
+     Esses dois labels novos (`signal:`/`app:`) são o que permite a
+     verificação pós-merge reconsultar o sinal certo, para o app certo,
+     em vez de sempre olhar `restart_count` de forma genérica — não
+     pule esse passo mesmo que pareça redundante com o corpo do PR.
+     No corpo do PR, inclua:
      - `Closes #${ISSUE_NUMBER}`
      - O que foi observado (resuma da issue)
      - O que a mudança faz e por que deveria ajudar
