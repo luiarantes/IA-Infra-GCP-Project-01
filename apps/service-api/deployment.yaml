@@ -3,6 +3,7 @@
 # service-worker. Usa a KSA microservices-ksa (Workload Identity) para
 # publicar no Pub/Sub e exportar trace pro Cloud Trace (fase 8.2) sem
 # credencial estatica - ver apps/shared/serviceaccount.yaml.
+# (comentario de teste do verify-fix generalizado, sem efeito funcional)
 apiVersion: apps/v1
 kind: Deployment
 metadata:
