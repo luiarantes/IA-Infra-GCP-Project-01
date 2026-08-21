@@ -28,6 +28,12 @@ service-account*.json
 # sincronizadas no Drive pra acesso em sessoes/chats futuros
 /notas-privadas/
 
-# Contexto pra sessoes de IA (Claude Code) - mesma logica do
+# Contexto pra sessoes de IA (Antigravity / Claude Code) - mesma logica do
 # notas-privadas/, nunca vai pro repo publico
 /CLAUDE.md
+/GEMINI.md
+/AGENTS.md
+/.agents/
+/.gemini/
+/.claude/
+
