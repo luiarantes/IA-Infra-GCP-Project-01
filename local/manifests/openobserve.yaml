@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openobserve
+  namespace: default
+  labels:
+    app: openobserve
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: openobserve
+  template:
+    metadata:
+      labels:
+        app: openobserve
+    spec:
+      containers:
+        - name: openobserve
+          image: public.ecr.aws/zinclabs/openobserve:latest
+          env:
+            - name: ZO_ROOT_USER_EMAIL
+              value: "admin@example.com"
+            - name: ZO_ROOT_USER_PASSWORD
+              value: "ComplexPassword123#"
+            - name: ZO_DATA_DIR
+              value: "/data"
+          ports:
+            - containerPort: 5080
+              name: http
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: openobserve
+  namespace: default
+spec:
+  type: NodePort
+  selector:
+    app: openobserve
+  ports:
+    - name: http
+      port: 5080
+      targetPort: 5080
+      nodePort: 30580

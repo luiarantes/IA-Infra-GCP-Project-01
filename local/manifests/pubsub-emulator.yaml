@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pubsub-emulator
+  namespace: default
+  labels:
+    app: pubsub-emulator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pubsub-emulator
+  template:
+    metadata:
+      labels:
+        app: pubsub-emulator
+    spec:
+      containers:
+        - name: pubsub-emulator
+          image: google/cloud-sdk:emulators
+          command: ["gcloud", "beta", "emulators", "pubsub", "start", "--host-port=0.0.0.0:8085", "--project=aiops-local"]
+          ports:
+            - containerPort: 8085
+              name: pubsub
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pubsub-emulator
+  namespace: default
+spec:
+  type: NodePort
+  selector:
+    app: pubsub-emulator
+  ports:
+    - name: pubsub
+      port: 8085
+      targetPort: 8085
+      nodePort: 30085

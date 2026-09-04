@@ -1,0 +1,22 @@
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: aiops-local
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      # Gateway da Infra
+      - containerPort: 30080
+        hostPort: 8080
+        protocol: TCP
+      # BuscaCEP API
+      - containerPort: 30000
+        hostPort: 8000
+        protocol: TCP
+      # OpenObserve (UI e OTel Ingestion)
+      - containerPort: 30580
+        hostPort: 5080
+        protocol: TCP
+      # Google Pub/Sub Emulator
+      - containerPort: 30085
+        hostPort: 8085
+        protocol: TCP

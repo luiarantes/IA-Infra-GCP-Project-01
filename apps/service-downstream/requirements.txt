@@ -3,4 +3,5 @@ uvicorn[standard]==0.32.0
 opentelemetry-api
 opentelemetry-sdk
 opentelemetry-exporter-gcp-trace
+opentelemetry-exporter-otlp-proto-http
 opentelemetry-instrumentation-fastapi
