@@ -1,0 +1,25 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: service-worker
+  title: Service Worker (Consumer)
+  description: Worker assíncrono que consome mensagens da subscription do Pub/Sub e aciona o downstream.
+  tags:
+    - python
+    - pubsub
+    - consumer
+    - worker
+    - opentelemetry
+  annotations:
+    github.com/project-slug: luiarantes/IA-Infra-GCP-Project-01
+    backstage.io/techdocs-ref: dir:.
+    openobserve.io/service-name: service-worker
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-team
+  system: aiops-platform
+  dependsOn:
+    - component:service-downstream

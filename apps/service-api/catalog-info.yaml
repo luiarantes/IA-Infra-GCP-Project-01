@@ -1,0 +1,27 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: service-api
+  title: Service API (Producer)
+  description: API intermediária responsável por receber requisições do Gateway e publicar mensagens no Pub/Sub.
+  tags:
+    - python
+    - fastapi
+    - opentelemetry
+    - pubsub
+    - producer
+  annotations:
+    github.com/project-slug: luiarantes/IA-Infra-GCP-Project-01
+    backstage.io/techdocs-ref: dir:.
+    openobserve.io/service-name: service-api
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-team
+  system: aiops-platform
+  providesApis:
+    - service-api
+  consumesApis:
+    - gateway-api

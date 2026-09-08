@@ -1,0 +1,24 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: service-downstream
+  title: Service Downstream
+  description: Microsserviço final de processamento no fluxo ponta a ponta.
+  tags:
+    - python
+    - fastapi
+    - opentelemetry
+    - downstream
+  annotations:
+    github.com/project-slug: luiarantes/IA-Infra-GCP-Project-01
+    backstage.io/techdocs-ref: dir:.
+    openobserve.io/service-name: service-downstream
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-team
+  system: aiops-platform
+  providesApis:
+    - downstream-api

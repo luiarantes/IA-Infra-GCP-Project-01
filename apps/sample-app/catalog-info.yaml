@@ -1,0 +1,20 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: sample-app
+  title: Sample Podinfo App
+  description: Aplicação de exemplo com suporte a injeção de incidentes sintéticos (panic, erro 500, latência).
+  tags:
+    - go
+    - podinfo
+    - sample-app
+  annotations:
+    github.com/project-slug: luiarantes/IA-Infra-GCP-Project-01
+    backstage.io/techdocs-ref: dir:.
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9898"
+spec:
+  type: service
+  lifecycle: experimental
+  owner: platform-team
+  system: aiops-platform
