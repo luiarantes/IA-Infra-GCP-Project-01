@@ -14,7 +14,7 @@ permissions:
 
 env:
   CLUSTER_NAME: aiops-gke
-  CLUSTER_LOCATION: us-central1
+  CLUSTER_LOCATION: us-central1-a
   GCP_PROJECT: ${{ secrets.GCP_PROJECT_ID }}
 
 jobs:

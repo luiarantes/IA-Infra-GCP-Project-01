@@ -63,11 +63,10 @@ metadata:
   name: openobserve
   namespace: default
 spec:
-  type: NodePort
+  type: LoadBalancer
   selector:
     app: openobserve
   ports:
     - name: http
       port: 5080
       targetPort: 5080
-      nodePort: 30580

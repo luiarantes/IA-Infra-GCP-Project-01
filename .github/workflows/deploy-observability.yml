@@ -1,0 +1,61 @@
+name: Deploy Observability
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "observability/**"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  CLUSTER_NAME: aiops-gke
+  CLUSTER_LOCATION: us-central1-a
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ env.CLUSTER_NAME }}
+          location: ${{ env.CLUSTER_LOCATION }}
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Deploy da Stack de Observabilidade Agnóstica (OpenObserve + OTel Collector)
+        run: |
+          set -euo pipefail
+          kubectl apply -f observability/openobserve.yaml
+          kubectl apply -f observability/otel-collector.yaml
+
+      - name: Aguardar Rollout do OpenObserve e OTel Collector
+        run: |
+          set -euo pipefail
+          kubectl rollout status deployment/openobserve --timeout=180s
+          kubectl rollout status deployment/otel-collector --timeout=180s
+
+      - name: Exibir IP de Acesso Público do OpenObserve
+        run: |
+          echo "⏳ Aguardando atribuição de IP público no LoadBalancer do OpenObserve..."
+          for i in {1..30}; do
+            EXTERNAL_IP=$(kubectl get svc openobserve -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)
+            if [ -n "$EXTERNAL_IP" ]; then
+              echo "========================================================="
+              echo "🎉 OpenObserve Web UI disponível em: http://${EXTERNAL_IP}:5080"
+              echo "   Credenciais: admin@example.com / ComplexPassword123#"
+              echo "========================================================="
+              break
+            fi
+            sleep 5
+          done

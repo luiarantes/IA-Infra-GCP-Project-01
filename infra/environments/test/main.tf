@@ -35,6 +35,7 @@ module "gke" {
 
   project_id           = var.project_id
   region               = var.region
+  zone                 = var.zone
   cluster_name         = var.cluster_name
   network_self_link    = module.network.network_self_link
   subnetwork_self_link = module.network.subnet_self_link

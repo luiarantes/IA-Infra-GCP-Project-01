@@ -14,7 +14,7 @@ permissions:
 
 env:
   CLUSTER_NAME: aiops-gke
-  CLUSTER_LOCATION: us-central1
+  CLUSTER_LOCATION: us-central1-a
 
 jobs:
   load-test:

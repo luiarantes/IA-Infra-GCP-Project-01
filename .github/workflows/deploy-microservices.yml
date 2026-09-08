@@ -23,7 +23,7 @@ permissions:
 
 env:
   CLUSTER_NAME: aiops-gke
-  CLUSTER_LOCATION: us-central1
+  CLUSTER_LOCATION: us-central1-a
   AR_REGION: us-central1
   AR_REPOSITORY: sample-app
 
