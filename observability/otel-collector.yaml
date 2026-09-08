@@ -105,7 +105,7 @@ data:
       otlphttp/openobserve:
         endpoint: "http://openobserve:5080/api/default"
         headers:
-          Authorization: "Basic YWRtaW5AZXhhbXBsZS5jb206Q29tcGxleFBhc3N3b3JkMTIzIw=="
+          Authorization: "${env:OPENOBSERVE_AUTH_HEADER}"
         tls:
           insecure: true
 
@@ -146,6 +146,12 @@ spec:
         - name: otel-collector
           image: otel/opentelemetry-collector-contrib:0.108.0
           args: ["--config=/etc/otelcol-contrib/config.yaml"]
+          env:
+            - name: OPENOBSERVE_AUTH_HEADER
+              valueFrom:
+                secretKeyRef:
+                  name: openobserve-credentials
+                  key: auth_header
           volumeMounts:
             - name: config
               mountPath: /etc/otelcol-contrib

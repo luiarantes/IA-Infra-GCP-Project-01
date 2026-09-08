@@ -7,8 +7,6 @@ from pathlib import Path
 INFRA_DIR = Path(__file__).resolve().parent.parent.parent
 APPS_DIR = (INFRA_DIR.parent.parent / "Apps" / "IA-App-GCP-Project-01").resolve()
 
-OTEL_AUTH_HEADER = "Authorization=Basic YWRtaW5AZXhhbXBsZS5jb206Q29tcGxleFBhc3N3b3JkMTIzIw=="
-
 
 def apply_yaml(content: str):
     subprocess.run(["kubectl", "apply", "-f", "-"], input=content.encode("utf-8"), check=True)

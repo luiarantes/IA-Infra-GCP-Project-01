@@ -1,3 +1,14 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: openobserve-credentials
+  namespace: default
+type: Opaque
+stringData:
+  auth_header: "Basic YWRtaW5AZXhhbXBsZS5jb206Q29tcGxleFBhc3N3b3JkMTIzIw=="
+  root_user_email: "admin@example.com"
+  root_user_password: "ComplexPassword123#"
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -20,9 +31,15 @@ spec:
           image: public.ecr.aws/zinclabs/openobserve:latest
           env:
             - name: ZO_ROOT_USER_EMAIL
-              value: "admin@example.com"
+              valueFrom:
+                secretKeyRef:
+                  name: openobserve-credentials
+                  key: root_user_email
             - name: ZO_ROOT_USER_PASSWORD
-              value: "ComplexPassword123#"
+              valueFrom:
+                secretKeyRef:
+                  name: openobserve-credentials
+                  key: root_user_password
             - name: ZO_DATA_DIR
               value: "/data"
           ports:
