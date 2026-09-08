@@ -1,100 +1,79 @@
-# observability (fase 4)
+# Stack de Observabilidade Agnóstica (OpenTelemetry + OpenObserve)
 
-Stack de observabilidade nativa da GCP — sem Prometheus/Loki/Grafana
-self-hosted, para não gerar custo extra de compute.
+A plataforma utiliza uma stack de observabilidade **100% agnóstica de fornecedor de nuvem (zero vendor lock-in)** baseada no padrão CNCF **OpenTelemetry (OTel)** e no motor colunar de alta performance **OpenObserve**.
 
-## O que já existe
+---
 
-- **Coleta de logs**: automática. Todo cluster GKE Autopilot já envia logs
-  de todos os pods para o Cloud Logging por padrão, sem configuração
-  adicional.
-- **Métricas de aplicação**: [Google Cloud Managed Service for
-  Prometheus](https://cloud.google.com/stackdriver/docs/managed-prometheus)
-  (GMP), também ativo por padrão no Autopilot. O arquivo
-  [`podmonitoring.yaml`](podmonitoring.yaml) diz ao GMP para fazer scrape
-  do endpoint `/metrics` do podinfo — sem isso, só métricas de sistema
-  (CPU/memória) seriam coletadas, não as de aplicação.
-- **Métrica baseada em log + alerta**: `infra/modules/observability/`
-  (Terraform) cria uma métrica que conta logs de severidade `ERROR+` do
-  `sample-app` e uma política de alerta no Cloud Monitoring que dispara
-  quando essa contagem passa de `error_threshold` (default: qualquer erro)
-  numa janela de 5 minutos.
-- **Alerta de restart de container**: uma segunda política, baseada na
-  métrica nativa do GKE `kubernetes.io/container/restart_count`, dispara
-  sempre que um container reinicia. Ver "Limitação real encontrada" abaixo
-  — este é o alerta que de fato funciona com o podinfo.
-- **Alertas de CPU e memória**: baseados nas métricas nativas do GKE
-  `kubernetes.io/container/cpu/limit_utilization` e `.../memory/limit_utilization`
-  — já vêm normalizadas (0.0–1.0) relativas ao `resources.limits`
-  configurado no deployment, sem precisar calcular razão nenhuma.
-- **Alertas de erros 5xx e latência**: usam `condition_prometheus_query_language`
-  (PromQL direto no Cloud Monitoring) sobre as métricas que o próprio
-  podinfo expõe em `/metrics` (`http_requests_total`,
-  `http_request_duration_seconds`), coletadas via o `PodMonitoring` já
-  citado acima.
+## 🏗️ Arquitetura da Pipeline de Telemetria
 
-## Limitação real encontrada (testada em 2026-08-01)
-
-Provocamos um crash de propósito (`curl -X POST /panic` no podinfo) e
-descobrimos que **o alerta baseado em log (`severity>=ERROR`) nunca
-dispara para essa aplicação**: o podinfo usa a biblioteca Zap, que escreve
-o campo `"level"` no JSON de log, não `"severity"` (o nome que o Cloud
-Logging reconhece para promover automaticamente a severidade do
-`LogEntry`). Resultado: todo log do podinfo chega como `severity: INFO`,
-mesmo o da própria mensagem de pânico.
-
-Isso é uma limitação real de depender de log de aplicação como sinal de
-problema: cada app loga do seu jeito, então não é um sinal genérico o
-suficiente para uma plataforma de self-healing que precisa reagir a
-qualquer app. Por isso existe o alerta de `restart_count` — é um sinal do
-**Kubernetes**, não da aplicação, então funciona independente de como cada
-app loga.
-
-## Por que sem `notification_channels`
-
-A política de alerta não está conectada a e-mail/Slack de propósito. O
-objetivo aqui não é notificar uma pessoa — é o **agente de IA (fase 5)**
-consultar essas políticas via API (`Cloud Monitoring API` /
-`Cloud Logging API`) e decidir sozinho o que fazer. Alertas para humanos
-podem ser adicionados depois, se fizer sentido.
-
-## Como consultar manualmente
-
-```bash
-# ver os logs de erro do sample-app
-gcloud logging read 'resource.type="k8s_container" resource.labels.namespace_name="default" severity>=ERROR' --limit 20
-
-# ver as políticas de alerta configuradas
-gcloud alpha monitoring policies list --format="table(displayName,enabled)"
+```
+  [ Microsserviços / Aplicações ]
+    - gateway
+    - service-api               (OTLP HTTP / 4318)
+    - service-worker       ---------------------------->  [ OpenTelemetry Collector ]
+    - service-downstream                                  (Two-Tier Gateway Pod)
+    - BuscaCEP                                                      │
+                                                              (OTLP Exporter)
+                                                                    ▼
+                                                          [ OpenObserve Engine ]
+                                                          (Apache DataFusion + Parquet)
+                                                                    │
+                                                          (Web UI / Porta 5080)
+                                                                    ▼
+                                                      [ SRE / IDP / Agentes AIOps ]
 ```
 
-## Como provocar cada tipo de incidente (para testar os agentes)
+---
 
-Com `kubectl port-forward svc/podinfo 9898:9898` rodando em outro terminal:
+## 🔑 Pilares Principais
 
-```bash
-# restart (crash deliberado) - repare que e' GET, nao POST
-curl http://localhost:9898/panic
+1. **Agnosticismo Total**:
+   - Os microsserviços emitem exclusivamente no protocolo OTLP (`OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318/v1/traces`).
+   - Nenhuma biblioteca ou SDK proprietário de nuvem (Google Cloud Trace/Logging/Monitoring ou AWS CloudWatch) é embarcado na aplicação.
+2. **Armazenamento Colunar em Apache Parquet**:
+   - O OpenObserve grava logs, métricas e traces em arquivos `.parquet` compactados com Zstandard (ZSTD), garantindo compressão de até 90% e consultas SQL ultra-rápidas via Apache DataFusion.
+3. **Correlação Nativa de Logs e Traces**:
+   - Os logs estruturados contêm automaticamente `trace_id` e `span_id`. Na UI do OpenObserve, ao clicar em uma linha de log, é possível navegar diretamente para o waterfall do trace correspondente.
+4. **Filtro Automático de Probes**:
+   - O processador `filter/healthchecks` do OTel Collector descarta requisições aos endpoints `/healthz` e `/readyz`, eliminando ruído desnecessário.
 
-# erro 5xx
-curl http://localhost:9898/status/500
+---
 
-# latencia alta (simula uma resposta lenta, em segundos)
-curl http://localhost:9898/delay/3
-```
+## 📊 Manifestos Versionados
 
-CPU/memória altos não têm um endpoint dedicado no podinfo — a forma mais
-simples de provocar é gerar bastante carga concorrente contra qualquer
-endpoint (ex: várias chamadas em paralelo a `/delay/1`) enquanto os
-`resources.limits` do `apps/sample-app/deployment.yaml` estão
-propositalmente baixos.
+* [`observability/openobserve.yaml`](openobserve.yaml): Deployment com PersistentVolumeClaim e Service (`LoadBalancer` para Nuvem e `NodePort` para Kind).
+* [`observability/otel-collector.yaml`](otel-collector.yaml): ConfigMap, Deployment, Service e RBAC do OpenTelemetry Collector Contrib v0.108.0.
+* [`observability/traffic-generator.yaml`](traffic-generator.yaml): Deployment k6 leve gerando carga sintética contínua (~2 req/s) para manter gráficos e traces populados.
+* [`observability/podmonitoring.yaml`](podmonitoring.yaml): Manifesto histórico para compatibilidade legada.
 
-## Consultar as métricas do podinfo diretamente
+---
 
-Sem precisar de porta-forward nem de credenciais adicionais (usa o proxy
-já embutido na API do Kubernetes):
+## 🚀 Como Acessar a Interface do OpenObserve
 
-```bash
-POD=$(kubectl get pods -l app=podinfo -o jsonpath='{.items[0].metadata.name}')
-kubectl get --raw "/api/v1/namespaces/default/pods/${POD}:9898/proxy/metrics"
+* **Ambiente Local**:
+  - URL: `http://localhost:5080` (ou via comando `make obs-ui`)
+  - Login: `admin@example.com` / `ComplexPassword123#`
+* **Ambiente GCP GKE**:
+  - O OpenObserve é provisionado como `type: LoadBalancer` e recebe um IP público direto na porta `5080` (exibido ao final do workflow `deploy-observability.yml`).
+
+---
+
+## 🔍 Consultas SQL de Exemplo no OpenObserve
+
+No painel de SQL do OpenObserve, execute consultas diretamente sobre os streams:
+
+```sql
+-- Contagem de requisições por código de status HTTP
+SELECT "http.status_code", count(*) as total
+FROM default
+WHERE "http.status_code" IS NOT NULL
+GROUP BY "http.status_code"
+ORDER BY total DESC;
+
+-- Buscar traces com latência superior a 500ms
+SELECT trace_id, duration_ms, service_name, name
+FROM traces
+WHERE duration_ms > 500
+ORDER BY duration_ms DESC
+LIMIT 20;
 ```

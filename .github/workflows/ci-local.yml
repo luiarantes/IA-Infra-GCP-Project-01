@@ -1,0 +1,61 @@
+name: CI Local Simulation (Kind + Terraform)
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+    paths:
+      - "apps/**"
+      - "observability/**"
+      - "infra/environments/local/**"
+      - "local/**"
+      - ".github/workflows/ci-local.yml"
+  workflow_dispatch: {}
+
+jobs:
+  local-simulation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do Repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Configurar Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.5"
+
+      - name: Instalar Kind e kubectl
+        run: |
+          set -euo pipefail
+          curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.24.0/kind-linux-amd64
+          chmod +x ./kind
+          sudo mv ./kind /usr/local/bin/kind
+          sudo apt-get update && sudo apt-get install -y kubectl
+
+      - name: Provisionar Cluster Local e Microsserviços com Terraform
+        run: |
+          set -euo pipefail
+          terraform -chdir=infra/environments/local init
+          terraform -chdir=infra/environments/local apply -auto-approve
+
+      - name: Validar Endpoints dos Microsserviços e OpenObserve
+        run: |
+          set -euo pipefail
+          echo "🧪 Testando Gateway da Infra..."
+          curl --fail -X POST http://localhost:8080/work -H "Content-Type: application/json" -d '{"origem":"ci-github-actions"}'
+          echo ""
+          echo "🧪 Testando OpenObserve Healthcheck..."
+          curl --fail http://localhost:5080/healthz
+          echo ""
+          echo "✅ Todos os testes de validação local passaram com sucesso!"
+
+      - name: Destruir Cluster Local com Terraform (Limpeza)
+        if: always()
+        run: |
+          terraform -chdir=infra/environments/local destroy -auto-approve || true
