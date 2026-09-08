@@ -4,7 +4,7 @@ set -euo pipefail
 CLUSTER_NAME="aiops-local"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INFRA_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
-APPS_REPO_DIR="$(cd "${INFRA_DIR}/../Apps/IA-App-GCP-Project-01" 2>/dev/null && pwd || echo "")"
+APPS_REPO_DIR="$(cd "${INFRA_DIR}/../../Apps/IA-App-GCP-Project-01" 2>/dev/null && pwd || echo "")"
 
 check_prereqs() {
     if ! command -v docker >/dev/null 2>&1; then
@@ -21,7 +21,7 @@ check_prereqs() {
     fi
 }
 
-cluster_up() {
+create_cluster() {
     check_prereqs
     echo "🚀 [1/6] Verificando cluster local Kind '${CLUSTER_NAME}'..."
     if kind get clusters 2>/dev/null | grep -q "^${CLUSTER_NAME}$"; then
@@ -29,9 +29,11 @@ cluster_up() {
     else
         kind create cluster --config "${INFRA_DIR}/local/kind-config.yaml"
     fi
-
     kubectl cluster-info --context "kind-${CLUSTER_NAME}"
+}
 
+provision_workloads() {
+    check_prereqs
     echo "📊 [2/6] Instalando serviços de infraestrutura local (Metrics-Server, Pub/Sub Emulator, OpenObserve)..."
     kubectl apply -f "${INFRA_DIR}/local/manifests/metrics-server.yaml"
     kubectl apply -f "${INFRA_DIR}/local/manifests/pubsub-emulator.yaml"
@@ -87,6 +89,11 @@ cluster_up() {
     echo "================================================================="
 }
 
+cluster_up() {
+    create_cluster
+    provision_workloads
+}
+
 cluster_down() {
     echo "🛑 Destruindo cluster local Kind '${CLUSTER_NAME}'..."
     kind delete cluster --name "${CLUSTER_NAME}"
@@ -134,6 +141,9 @@ case "${1:-up}" in
     up)
         cluster_up
         ;;
+    provision)
+        provision_workloads
+        ;;
     down)
         cluster_down
         ;;
@@ -147,7 +157,7 @@ case "${1:-up}" in
         run_agent
         ;;
     *)
-        echo "Uso: $0 {up|down|status|test|agent}"
+        echo "Uso: $0 {up|provision|down|status|test|agent}"
         exit 1
         ;;
 esac

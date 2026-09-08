@@ -23,7 +23,7 @@ def main():
         apply_yaml(f.read())
 
     # OpenTelemetry Collector
-    otel_col_path = INFRA_DIR / "local" / "manifests" / "otel-collector.yaml"
+    otel_col_path = INFRA_DIR / "observability" / "otel-collector.yaml"
     with open(otel_col_path) as f:
         apply_yaml(f.read())
 

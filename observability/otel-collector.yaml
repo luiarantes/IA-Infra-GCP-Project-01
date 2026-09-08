@@ -1,0 +1,191 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: otel-collector
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: otel-collector
+rules:
+  - apiGroups: [""]
+    resources:
+      - nodes
+      - nodes/proxy
+      - services
+      - endpoints
+      - pods
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources:
+      - daemonsets
+      - statefulsets
+      - deployments
+      - replicasets
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: otel-collector
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: otel-collector
+subjects:
+  - kind: ServiceAccount
+    name: otel-collector
+    namespace: default
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-collector-config
+  namespace: default
+data:
+  config.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+      prometheus:
+        config:
+          scrape_configs:
+            - job_name: 'buscacep-api'
+              scrape_interval: 5s
+              static_configs:
+                - targets: ['buscacep-api:8000']
+            - job_name: 'gateway'
+              scrape_interval: 5s
+              static_configs:
+                - targets: ['gateway:8080']
+            - job_name: 'service-api'
+              scrape_interval: 5s
+              static_configs:
+                - targets: ['service-api:8080']
+            - job_name: 'service-worker'
+              scrape_interval: 5s
+              static_configs:
+                - targets: ['service-worker:8080']
+            - job_name: 'service-downstream'
+              scrape_interval: 5s
+              static_configs:
+                - targets: ['service-downstream:8080']
+
+    processors:
+      memory_limiter:
+        check_interval: 1s
+        limit_percentage: 75
+        spike_limit_percentage: 20
+
+      batch:
+        send_batch_size: 512
+        timeout: 1s
+
+      filter/healthchecks:
+        error_mode: ignore
+        traces:
+          span:
+            - 'attributes["http.target"] == "/healthz"'
+            - 'attributes["http.target"] == "/readyz"'
+            - 'name == "GET /healthz"'
+            - 'name == "GET /readyz"'
+
+      resource:
+        attributes:
+          - key: environment
+            value: aiops-platform
+            action: upsert
+
+    exporters:
+      otlphttp/openobserve:
+        endpoint: "http://openobserve:5080/api/default"
+        headers:
+          Authorization: "Basic YWRtaW5AZXhhbXBsZS5jb206Q29tcGxleFBhc3N3b3JkMTIzIw=="
+        tls:
+          insecure: true
+
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [memory_limiter, filter/healthchecks, resource, batch]
+          exporters: [otlphttp/openobserve]
+        metrics:
+          receivers: [otlp, prometheus]
+          processors: [memory_limiter, resource, batch]
+          exporters: [otlphttp/openobserve]
+        logs:
+          receivers: [otlp]
+          processors: [memory_limiter, resource, batch]
+          exporters: [otlphttp/openobserve]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otel-collector
+  namespace: default
+  labels:
+    app: otel-collector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: otel-collector
+  template:
+    metadata:
+      labels:
+        app: otel-collector
+    spec:
+      serviceAccountName: otel-collector
+      containers:
+        - name: otel-collector
+          image: otel/opentelemetry-collector-contrib:0.108.0
+          args: ["--config=/etc/otelcol-contrib/config.yaml"]
+          volumeMounts:
+            - name: config
+              mountPath: /etc/otelcol-contrib
+          ports:
+            - name: otlp-grpc
+              containerPort: 4317
+            - name: otlp-http
+              containerPort: 4318
+            - name: metrics
+              containerPort: 8888
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      volumes:
+        - name: config
+          configMap:
+            name: otel-collector-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: otel-collector
+  namespace: default
+  labels:
+    app: otel-collector
+spec:
+  type: ClusterIP
+  selector:
+    app: otel-collector
+  ports:
+    - name: otlp-grpc
+      port: 4317
+      targetPort: 4317
+    - name: otlp-http
+      port: 4318
+      targetPort: 4318
+    - name: metrics
+      port: 8888
+      targetPort: 8888
