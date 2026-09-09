@@ -2,36 +2,30 @@
 
 Plataforma Kubernetes efêmera, declarativa e multi-nuvem (**Local Kind**, **GCP GKE Standard SPOT** e **AWS EKS**), provisionada inteiramente por código (**Terraform**) com observabilidade 100% agnóstica (**OpenTelemetry + OpenObserve**) e agentes de IA que detectam incidentes, investigam a causa raiz e abrem Pull Requests de correção — sempre com aprovação humana obrigatória.
 
-Preparada nativamente para **Internal Developer Platforms (IDP)** como **Spotify Backstage** e **Port**.
-
 ---
 
 ## 🏗️ Arquitetura Multi-Target
 
 ```
-                                  [ PLATAFORMA DE ENGENHARIA (IDP) ]
-                                   (Spotify Backstage / Port Ready)
-                                                  │
-                                                  ▼
-                                     [ TERRAFORM IAC UNIFICADO ]
-                                                  │
-                 ┌────────────────────────────────┼────────────────────────────────┐
-                 ▼                                ▼                                ▼
-       [ AMBIENTE LOCAL ]                [ AMBIENTE GCP ]                 [ AMBIENTE AWS (Scaffold) ]
-     infra/environments/local/         infra/environments/gcp/          infra/environments/aws/
-     • Provider: tehcyx/kind           • Provider: google (GKE Spot)    • Provider: aws (EKS Spot)
-     • Cluster Kind em Docker          • GKE Standard Zonal (1 nó Spot) • AWS EKS (1 nó Spot)
-     • Pub/Sub Emulator                • Cloud Pub/Sub Gerenciado       • Amazon SQS/SNS
-     • OpenObserve (localhost:5080)    • OpenObserve (LoadBalancer IP)  • OpenObserve (ALB / NLB)
-     • Custo: R$ 0,00                  • Custo: ~R$ 0,08/h              • Custo: ~R$ 0,09/h
-                 │                                │                                │
-                 └────────────────────────────────┼────────────────────────────────┘
-                                                  ▼
-                               [ CAMADA DE APLICAÇÃO 100% AGNÓSTICA ]
-                               • Microsserviços FastAPI (OTLP HTTP / 4318)
-                               • OpenTelemetry Collector Gateway (Two-Tier)
-                               • OpenObserve (Armazenamento Colunar Parquet)
-                               • In-Cluster AIOps Agent Runner (SQL Parquet)
+                                  [ TERRAFORM IAC UNIFICADO ]
+                                               │
+             ┌─────────────────────────────────┼────────────────────────────────┐
+             ▼                                 ▼                                ▼
+   [ AMBIENTE LOCAL ]                 [ AMBIENTE GCP ]                 [ AMBIENTE AWS (Scaffold) ]
+ infra/environments/local/          infra/environments/gcp/          infra/environments/aws/
+ • Provider: tehcyx/kind            • Provider: google (GKE Spot)    • Provider: aws (EKS Spot)
+ • Cluster Kind em Docker           • GKE Standard Zonal (1 nó Spot) • AWS EKS (1 nó Spot)
+ • Pub/Sub Emulator                 • Cloud Pub/Sub Gerenciado       • Amazon SQS/SNS
+ • OpenObserve (localhost:5080)     • OpenObserve (LoadBalancer IP)  • OpenObserve (ALB / NLB)
+ • Custo: R$ 0,00                   • Custo: ~R$ 0,08/h              • Custo: ~R$ 0,09/h
+             │                                 │                                │
+             └─────────────────────────────────┼────────────────────────────────┘
+                                               ▼
+                            [ CAMADA DE APLICAÇÃO 100% AGNÓSTICA ]
+                            • Microsserviços FastAPI (OTLP HTTP / 4318)
+                            • OpenTelemetry Collector Gateway (Two-Tier)
+                            • OpenObserve (Armazenamento Colunar Parquet)
+                            • In-Cluster AIOps Agent Runner (SQL Parquet)
 ```
 
 ---
@@ -145,16 +139,15 @@ repo/
 │       ├── test/           # Terraform para GCP GKE Spot
 │       └── aws/            # Scaffold Terraform para AWS EKS
 ├── apps/
-│   ├── gateway/            # Ponto de entrada HTTP + catalog-info.yaml
-│   ├── service-api/        # Producer Pub/Sub + catalog-info.yaml
-│   ├── service-worker/     # Consumer assíncrono + catalog-info.yaml
-│   ├── service-downstream/ # Processamento downstream + catalog-info.yaml
+│   ├── gateway/            # Ponto de entrada HTTP
+│   ├── service-api/        # Producer Pub/Sub
+│   ├── service-worker/     # Consumer assíncrono
+│   ├── service-downstream/ # Processamento downstream
 │   └── sample-app/         # Podinfo com injeção de falhas
 ├── observability/          # OpenObserve, OTel Collector e Traffic Generator
 ├── templates/
-│   └── microservice-template/ # Golden Path Template para novos serviços
+│   └── microservice-template/ # Template scaffold para novos microsserviços
 ├── agents/                 # Log Analyzer, PR Creator, Verify Fix
-├── docs/                   # Guia de IDP (docs/idp-guide.md)
 └── .github/workflows/      # CI/CD: ci-local, deploy, terraform, agentes
 ```
 

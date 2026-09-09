@@ -20,7 +20,7 @@ A plataforma utiliza uma stack de observabilidade **100% agnóstica de fornecedo
                                                                     │
                                                           (Web UI / Porta 5080)
                                                                     ▼
-                                                      [ SRE / IDP / Agentes AIOps ]
+                                                      [ Engenharia / SRE / Agentes AIOps ]
 ```
 
 ---
