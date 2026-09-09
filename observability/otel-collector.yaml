@@ -59,22 +59,10 @@ data:
               scrape_interval: 5s
               static_configs:
                 - targets: ['buscacep-api:8000']
-            - job_name: 'gateway'
-              scrape_interval: 5s
+            - job_name: 'otel-collector'
+              scrape_interval: 10s
               static_configs:
-                - targets: ['gateway:8080']
-            - job_name: 'service-api'
-              scrape_interval: 5s
-              static_configs:
-                - targets: ['service-api:8080']
-            - job_name: 'service-worker'
-              scrape_interval: 5s
-              static_configs:
-                - targets: ['service-worker:8080']
-            - job_name: 'service-downstream'
-              scrape_interval: 5s
-              static_configs:
-                - targets: ['service-downstream:8080']
+                - targets: ['0.0.0.0:8888']
 
     processors:
       memory_limiter:
