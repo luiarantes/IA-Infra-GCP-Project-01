@@ -1,0 +1,122 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-datasources
+  namespace: default
+data:
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Loki
+        type: loki
+        uid: loki
+        access: proxy
+        url: http://loki:3100
+        jsonData:
+          derivedFields:
+            - datasourceUid: tempo
+              matcherRegex: "trace_id=([0-9a-fA-F]{32})"
+              name: TraceID
+              url: "$${__value.raw}"
+
+      - name: Tempo
+        type: tempo
+        uid: tempo
+        access: proxy
+        url: http://tempo:3200
+        jsonData:
+          httpMethod: GET
+          tracesToLogs:
+            datasourceUid: loki
+            filterByTraceID: true
+            filterBySpanID: false
+            spanStartTimeShift: "-5m"
+            spanEndTimeShift: "5m"
+            tags: ["service.name"]
+          serviceMap:
+            datasourceUid: prometheus
+          nodeGraph:
+            enabled: true
+
+      - name: OpenObserve (Prometheus API)
+        type: prometheus
+        uid: openobserve
+        access: proxy
+        url: http://openobserve:5080/api/default/prometheus
+        basicAuth: true
+        basicAuthUser: admin@example.com
+        secureJsonData:
+          basicAuthPassword: ComplexPassword123#
+        jsonData:
+          httpMethod: POST
+
+      - name: Pyroscope
+        type: grafana-pyroscope-datasource
+        uid: pyroscope
+        access: proxy
+        url: http://pyroscope:4040
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: default
+  labels:
+    app: grafana
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      containers:
+        - name: grafana
+          image: grafana/grafana:11.2.0
+          env:
+            - name: GF_SECURITY_ADMIN_USER
+              value: "admin"
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              value: "admin"
+            - name: GF_AUTH_ANONYMOUS_ENABLED
+              value: "true"
+            - name: GF_AUTH_ANONYMOUS_ORG_ROLE
+              value: "Admin"
+            - name: GF_USERS_ALLOW_SIGN_UP
+              value: "false"
+          ports:
+            - name: http
+              containerPort: 3000
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          volumeMounts:
+            - name: datasources
+              mountPath: /etc/grafana/provisioning/datasources
+      volumes:
+        - name: datasources
+          configMap:
+            name: grafana-datasources
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: default
+  labels:
+    app: grafana
+spec:
+  type: LoadBalancer
+  selector:
+    app: grafana
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000

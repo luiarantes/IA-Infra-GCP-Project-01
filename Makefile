@@ -80,6 +80,14 @@ obs-ui:
 	@echo "📊 Abrindo OpenObserve em http://localhost:5080 ..."
 	@open http://localhost:5080 2>/dev/null || echo "Acesse: http://localhost:5080 (Login: admin@example.com / ComplexPassword123#)"
 
+grafana-ui:
+	@echo "📈 Abrindo Grafana em http://localhost:3000 ..."
+	@open http://localhost:3000 2>/dev/null || echo "Acesse: http://localhost:3000 (Login: admin / admin)"
+
+pyroscope-ui:
+	@echo "🔥 Abrindo Pyroscope em http://localhost:4040 ..."
+	@open http://localhost:4040 2>/dev/null || echo "Acesse: http://localhost:4040"
+
 gcp-up:
 	@echo "☁️ Disparando Terraform Apply no GCP via GitHub Actions..."
 	gh workflow run terraform-apply.yml --ref main --repo luiarantes/IA-Infra-GCP-Project-01

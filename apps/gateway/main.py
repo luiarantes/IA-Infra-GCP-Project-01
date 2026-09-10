@@ -15,7 +15,9 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("gateway")
 
 SERVICE_API_URL = os.environ.get("SERVICE_API_URL", "http://service-api:8080")
+BUSCACEP_API_URL = os.environ.get("BUSCACEP_API_URL", "http://buscacep-api:80")
 PROJECT_ID = os.environ.get("PROJECT_ID", "aiops-local")
+
 OTEL_EXPORTER_OTLP_ENDPOINT = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT")
 OTEL_EXPORTER_OTLP_LOGS_ENDPOINT = os.environ.get("OTEL_EXPORTER_OTLP_LOGS_ENDPOINT")
 ENABLE_CLOUD_TRACE = os.environ.get("ENABLE_CLOUD_TRACE", "true").lower() == "true"
@@ -103,3 +105,25 @@ async def work(payload: dict | None = None):
     logger.info("trace_id=%s request_id=%s", trace_id, body.get("request_id"))
 
     return JSONResponse(content=body, status_code=response.status_code)
+
+
+@app.get("/api/cep/{cep}")
+async def get_cep(cep: str):
+    span = trace.get_current_span()
+    trace_id = format(span.get_span_context().trace_id, "032x")
+
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        try:
+            response = await client.get(f"{BUSCACEP_API_URL}/api/cep/{cep}")
+        except httpx.HTTPError as exc:
+            logger.error("falha ao chamar buscacep-api: %s", exc)
+            raise HTTPException(status_code=502, detail="buscacep-api indisponivel") from exc
+
+    logger.info("trace_id=%s rota=/api/cep/%s status=%s", trace_id, cep, response.status_code)
+    try:
+        body = response.json()
+    except Exception:
+        body = {"detail": response.text}
+
+    return JSONResponse(content=body, status_code=response.status_code)
+

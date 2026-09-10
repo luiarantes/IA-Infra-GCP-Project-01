@@ -1,0 +1,98 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: beyla
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: beyla
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "services", "nodes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "replicasets"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: beyla
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: beyla
+subjects:
+  - kind: ServiceAccount
+    name: beyla
+    namespace: default
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: beyla-config
+  namespace: default
+data:
+  beyla-config.yml: |
+    trace_printer: text
+    otel_traces_export:
+      endpoint: "http://otel-collector:4318"
+    discovery:
+      services:
+        - k8s_deployment_name: "buscacep-api"
+          name: "buscacep-api-ebpf"
+        - k8s_deployment_name: "buscacep-worker"
+          name: "buscacep-worker-ebpf"
+        - k8s_deployment_name: "gateway"
+          name: "gateway-ebpf"
+        - k8s_deployment_name: "service-api"
+          name: "service-api-ebpf"
+        - k8s_deployment_name: "service-worker"
+          name: "service-worker-ebpf"
+        - k8s_deployment_name: "service-downstream"
+          name: "service-downstream-ebpf"
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: beyla
+  namespace: default
+  labels:
+    app: beyla
+spec:
+  selector:
+    matchLabels:
+      app: beyla
+  template:
+    metadata:
+      labels:
+        app: beyla
+    spec:
+      serviceAccountName: beyla
+      hostPID: true
+      containers:
+        - name: beyla
+          image: grafana/beyla:1.8.6
+          securityContext:
+            privileged: true
+          env:
+            - name: BEYLA_CONFIG_PATH
+              value: "/etc/beyla/beyla-config.yml"
+            - name: BEYLA_KUBE_METADATA_ENABLE
+              value: "autodetect"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 1Gi
+          volumeMounts:
+            - name: beyla-config
+              mountPath: /etc/beyla
+      volumes:
+        - name: beyla-config
+          configMap:
+            name: beyla-config

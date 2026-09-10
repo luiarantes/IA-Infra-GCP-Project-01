@@ -34,10 +34,15 @@ create_cluster() {
 
 provision_workloads() {
     check_prereqs
-    echo "📊 [2/6] Instalando serviços de infraestrutura local (Metrics-Server, Pub/Sub Emulator, OpenObserve)..."
+    echo "📊 [2/6] Instalando serviços de infraestrutura local (Metrics-Server, Pub/Sub Emulator, OpenObserve, Grafana Stack)..."
     kubectl apply -f "${INFRA_DIR}/local/manifests/metrics-server.yaml"
     kubectl apply -f "${INFRA_DIR}/local/manifests/pubsub-emulator.yaml"
     kubectl apply -f "${INFRA_DIR}/local/manifests/openobserve.yaml"
+    kubectl apply -f "${INFRA_DIR}/observability/tempo.yaml"
+    kubectl apply -f "${INFRA_DIR}/observability/loki.yaml"
+    kubectl apply -f "${INFRA_DIR}/observability/pyroscope.yaml"
+    kubectl apply -f "${INFRA_DIR}/observability/beyla.yaml"
+    kubectl apply -f "${INFRA_DIR}/observability/grafana.yaml"
 
     echo "🔨 [3/6] Construindo imagens Docker dos microsserviços, do BuscaCEP e do agente..."
     docker build -t gateway:local "${INFRA_DIR}/apps/gateway"
@@ -67,6 +72,11 @@ provision_workloads() {
     kubectl rollout status deployment/metrics-server -n kube-system --timeout=90s || true
     kubectl rollout status deployment/pubsub-emulator --timeout=90s || true
     kubectl rollout status deployment/openobserve --timeout=90s || true
+    kubectl rollout status deployment/tempo --timeout=90s || true
+    kubectl rollout status deployment/loki --timeout=90s || true
+    kubectl rollout status deployment/pyroscope --timeout=90s || true
+    kubectl rollout status deployment/grafana --timeout=90s || true
+    kubectl rollout status daemonset/beyla --timeout=90s || true
     kubectl rollout status deployment/otel-collector --timeout=90s || true
     kubectl rollout status deployment/gateway --timeout=90s || true
     kubectl rollout status deployment/service-api --timeout=90s || true
@@ -84,7 +94,10 @@ provision_workloads() {
     echo " 🌐 Gateway da Infra (Entrada):   http://localhost:8080"
     echo " 🌐 BuscaCEP Web & API:           http://localhost:8000"
     echo " 📊 OpenObserve (Dashboards/OTel):http://localhost:5080"
-    echo "    (Login OpenObserve: admin@example.com / ComplexPassword123#)"
+    echo "    (Login: admin@example.com / ComplexPassword123#)"
+    echo " 📈 Grafana OSS (Loki/Tempo/APM): http://localhost:3000"
+    echo "    (Login: admin / admin)"
+    echo " 🔥 Pyroscope (Continuous Profile):http://localhost:4040"
     echo " 📬 Google Pub/Sub Emulator:      http://localhost:8085"
     echo "================================================================="
 }

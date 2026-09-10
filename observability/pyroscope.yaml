@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pyroscope
+  namespace: default
+  labels:
+    app: pyroscope
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pyroscope
+  template:
+    metadata:
+      labels:
+        app: pyroscope
+    spec:
+      containers:
+        - name: pyroscope
+          image: grafana/pyroscope:1.7.1
+          args: ["server"]
+          ports:
+            - name: http
+              containerPort: 4040
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/pyroscope
+      volumes:
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pyroscope
+  namespace: default
+  labels:
+    app: pyroscope
+spec:
+  type: LoadBalancer
+  selector:
+    app: pyroscope
+  ports:
+    - name: http
+      port: 4040
+      targetPort: 4040

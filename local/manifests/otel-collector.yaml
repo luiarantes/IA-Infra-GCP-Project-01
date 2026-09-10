@@ -79,8 +79,8 @@ data:
     processors:
       memory_limiter:
         check_interval: 1s
-        limit_percentage: 75
-        spike_limit_percentage: 20
+        limit_mib: 768
+        spike_limit_mib: 128
 
       batch:
         send_batch_size: 512
@@ -109,12 +109,22 @@ data:
         tls:
           insecure: true
 
+      otlp/tempo:
+        endpoint: "tempo:4317"
+        tls:
+          insecure: true
+
+      otlphttp/loki:
+        endpoint: "http://loki:3100/otlp"
+        tls:
+          insecure: true
+
     service:
       pipelines:
         traces:
           receivers: [otlp]
           processors: [memory_limiter, filter/healthchecks, resource, batch]
-          exporters: [otlphttp/openobserve]
+          exporters: [otlphttp/openobserve, otlp/tempo]
         metrics:
           receivers: [otlp, prometheus]
           processors: [memory_limiter, resource, batch]
@@ -122,7 +132,7 @@ data:
         logs:
           receivers: [otlp]
           processors: [memory_limiter, resource, batch]
-          exporters: [otlphttp/openobserve]
+          exporters: [otlphttp/openobserve, otlphttp/loki]
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -165,10 +175,10 @@ spec:
           resources:
             requests:
               cpu: 100m
-              memory: 128Mi
+              memory: 256Mi
             limits:
               cpu: 500m
-              memory: 512Mi
+              memory: 1Gi
       volumes:
         - name: config
           configMap:

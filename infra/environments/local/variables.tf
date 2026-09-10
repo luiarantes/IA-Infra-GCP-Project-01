@@ -33,3 +33,15 @@ variable "pubsub_emulator_port" {
   type        = number
   default     = 8085
 }
+
+variable "grafana_port" {
+  description = "Porta no host para a UI do Grafana OSS"
+  type        = number
+  default     = 3000
+}
+
+variable "pyroscope_port" {
+  description = "Porta no host para a UI do Pyroscope"
+  type        = number
+  default     = 4040
+}

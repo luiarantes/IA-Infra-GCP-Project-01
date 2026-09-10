@@ -98,6 +98,8 @@ def main():
             content = f.read().replace("IMAGE_PLACEHOLDER", "buscacep:local")
             env_extra = """            - name: PUBSUB_EMULATOR_HOST
               value: "pubsub-emulator:8085"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://otel-collector:4318/v1/traces"
 """
             content = content.replace("          env:\n", "          env:\n" + env_extra)
             apply_yaml(content)
@@ -105,6 +107,8 @@ def main():
             content = f.read().replace("IMAGE_PLACEHOLDER", "buscacep:local")
             env_extra = """            - name: PUBSUB_EMULATOR_HOST
               value: "pubsub-emulator:8085"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://otel-collector:4318/v1/traces"
 """
             content = content.replace("          env:\n", "          env:\n" + env_extra)
             apply_yaml(content)

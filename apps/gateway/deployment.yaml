@@ -29,8 +29,12 @@ spec:
           env:
             - name: SERVICE_API_URL
               value: "http://service-api:8080"
+            - name: BUSCACEP_API_URL
+              value: "http://buscacep-api:80"
             - name: PROJECT_ID
               value: "${PROJECT_ID}"
+
+
           # GKE Autopilot exige requests explicitos em todo pod
           resources:
             requests:

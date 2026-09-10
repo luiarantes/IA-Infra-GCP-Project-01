@@ -32,6 +32,16 @@ resource "kind_cluster" "default" {
         host_port      = var.pubsub_emulator_port
         protocol       = "TCP"
       }
+      extra_port_mappings {
+        container_port = 30300
+        host_port      = var.grafana_port
+        protocol       = "TCP"
+      }
+      extra_port_mappings {
+        container_port = 30440
+        host_port      = var.pyroscope_port
+        protocol       = "TCP"
+      }
     }
   }
 }

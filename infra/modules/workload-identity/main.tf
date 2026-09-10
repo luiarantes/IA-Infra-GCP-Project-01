@@ -22,6 +22,6 @@ resource "google_project_iam_member" "roles" {
 # nao concede nada.
 resource "google_service_account_iam_member" "workload_identity_binding" {
   service_account_id = google_service_account.workload.name
-  role                = "roles/iam.workloadIdentityUser"
-  member              = "serviceAccount:${var.project_id}.svc.id.goog[${var.namespace}/${var.ksa_name}]"
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "serviceAccount:${var.project_id}.svc.id.goog[${var.namespace}/${var.ksa_name}]"
 }

@@ -33,29 +33,49 @@ jobs:
           location: ${{ env.CLUSTER_LOCATION }}
           project_id: ${{ secrets.GCP_PROJECT_ID }}
 
-      - name: Deploy da Stack de Observabilidade Agnóstica (OpenObserve + OTel Collector)
+      - name: Deploy da Stack de Observabilidade (OpenObserve + Grafana Labs LGTM + OTel Collector)
         run: |
           set -euo pipefail
           kubectl apply -f observability/openobserve.yaml
+          kubectl apply -f observability/tempo.yaml
+          kubectl apply -f observability/loki.yaml
+          kubectl apply -f observability/pyroscope.yaml
+          kubectl apply -f observability/beyla.yaml
+          kubectl apply -f observability/grafana.yaml
           kubectl apply -f observability/otel-collector.yaml
 
-      - name: Aguardar Rollout do OpenObserve e OTel Collector
+      - name: Aguardar Rollout dos Serviços de Observabilidade
         run: |
           set -euo pipefail
           kubectl rollout status deployment/openobserve --timeout=180s
+          kubectl rollout status deployment/tempo --timeout=180s
+          kubectl rollout status deployment/loki --timeout=180s
+          kubectl rollout status deployment/pyroscope --timeout=180s
+          kubectl rollout status deployment/grafana --timeout=180s
+          kubectl rollout status daemonset/beyla --timeout=180s
           kubectl rollout status deployment/otel-collector --timeout=180s
 
-      - name: Exibir IP de Acesso Público do OpenObserve
+      - name: Exibir IPs de Acesso Público (OpenObserve e Grafana)
         run: |
-          echo "⏳ Aguardando atribuição de IP público no LoadBalancer do OpenObserve..."
+          echo "⏳ Aguardando atribuição de IPs públicos nos LoadBalancers..."
+          OO_IP=""
+          GRAFANA_IP=""
           for i in {1..30}; do
-            EXTERNAL_IP=$(kubectl get svc openobserve -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)
-            if [ -n "$EXTERNAL_IP" ]; then
-              echo "========================================================="
-              echo "🎉 OpenObserve Web UI disponível em: http://${EXTERNAL_IP}:5080"
-              echo "   Credenciais: admin@example.com / ComplexPassword123#"
-              echo "========================================================="
+            if [ -z "$OO_IP" ]; then
+              OO_IP=$(kubectl get svc openobserve -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)
+            fi
+            if [ -z "$GRAFANA_IP" ]; then
+              GRAFANA_IP=$(kubectl get svc grafana -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)
+            fi
+            if [ -n "$OO_IP" ] && [ -n "$GRAFANA_IP" ]; then
               break
             fi
             sleep 5
           done
+
+          echo "========================================================="
+          echo "🎉 OpenObserve Web UI: http://${OO_IP:-<pendente>}:5080"
+          echo "   Credenciais: admin@example.com / ComplexPassword123#"
+          echo "📈 Grafana OSS Web UI: http://${GRAFANA_IP:-<pendente>}:3000"
+          echo "   Credenciais: admin / admin"
+          echo "========================================================="

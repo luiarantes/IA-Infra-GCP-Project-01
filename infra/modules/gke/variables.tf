@@ -35,3 +35,13 @@ variable "pods_range_name" {
 variable "services_range_name" {
   type = string
 }
+
+variable "min_node_count" {
+  type    = number
+  default = 1
+}
+
+variable "max_node_count" {
+  type    = number
+  default = 2
+}

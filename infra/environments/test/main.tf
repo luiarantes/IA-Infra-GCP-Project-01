@@ -41,6 +41,9 @@ module "gke" {
   subnetwork_self_link = module.network.subnet_self_link
   pods_range_name      = module.network.pods_range_name
   services_range_name  = module.network.services_range_name
+  min_node_count       = var.grafana_stack_mode == "distributed" ? 2 : 1
+  max_node_count       = var.grafana_stack_mode == "distributed" ? 4 : 2
+  machine_type         = var.grafana_stack_mode == "distributed" ? "e2-standard-4" : "e2-standard-2"
 }
 
 module "artifact_registry" {
@@ -258,4 +261,18 @@ resource "google_service_account_iam_member" "apps_deploy_wif_app01" {
   service_account_id = google_service_account.apps_deploy.name
   role               = "roles/iam.workloadIdentityUser"
   member             = "principalSet://iam.googleapis.com/projects/${var.project_number}/locations/global/workloadIdentityPools/github-actions-pool/attribute.repository/luiarantes/IA-App-GCP-Project-01"
+}
+
+# =============================================================================
+# Stack Grafana Labs Distribuída (Modo HA com Object Storage)
+# Ativada condicionalmente quando var.grafana_stack_mode == "distributed"
+# =============================================================================
+module "observability_storage" {
+  count  = var.grafana_stack_mode == "distributed" ? 1 : 0
+  source = "../../modules/observability-storage"
+
+  project_id = var.project_id
+  region     = var.region
+
+  depends_on = [google_project_service.apis]
 }

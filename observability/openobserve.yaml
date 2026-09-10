@@ -56,6 +56,8 @@ spec:
                   key: root_user_password
             - name: ZO_DATA_DIR
               value: "/data"
+            - name: ZO_MEMORY_CACHE_MAX_SIZE
+              value: "512"
           ports:
             - containerPort: 5080
               name: http
@@ -64,8 +66,8 @@ spec:
               cpu: 100m
               memory: 256Mi
             limits:
-              cpu: 500m
-              memory: 512Mi
+              cpu: 1000m
+              memory: 1Gi
           volumeMounts:
             - name: data
               mountPath: /data

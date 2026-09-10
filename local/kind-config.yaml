@@ -20,3 +20,11 @@ nodes:
       - containerPort: 30085
         hostPort: 8085
         protocol: TCP
+      # Grafana OSS UI
+      - containerPort: 30300
+        hostPort: 3000
+        protocol: TCP
+      # Grafana Pyroscope UI (Continuous Profiling)
+      - containerPort: 30440
+        hostPort: 4040
+        protocol: TCP

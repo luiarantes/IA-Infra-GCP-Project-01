@@ -22,3 +22,13 @@ output "pubsub_emulator_url" {
   description = "URL do emulador do Google Pub/Sub"
   value       = "http://localhost:${var.pubsub_emulator_port}"
 }
+
+output "grafana_url" {
+  description = "URL para acesso a interface web do Grafana OSS"
+  value       = "http://localhost:${var.grafana_port}"
+}
+
+output "pyroscope_url" {
+  description = "URL para acesso a interface web do Pyroscope"
+  value       = "http://localhost:${var.pyroscope_port}"
+}

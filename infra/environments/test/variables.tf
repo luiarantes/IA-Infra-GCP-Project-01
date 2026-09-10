@@ -56,3 +56,13 @@ variable "enable_budget_alert" {
   type    = bool
   default = true
 }
+
+variable "grafana_stack_mode" {
+  description = "Modo de operação da stack Grafana Labs: 'simple' (monolítico leve) ou 'distributed' (microsserviços HA com GCS)"
+  type        = string
+  default     = "simple"
+  validation {
+    condition     = contains(["simple", "distributed"], var.grafana_stack_mode)
+    error_message = "O valor de grafana_stack_mode deve ser 'simple' ou 'distributed'."
+  }
+}
