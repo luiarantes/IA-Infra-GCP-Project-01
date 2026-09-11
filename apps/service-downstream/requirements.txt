@@ -5,3 +5,4 @@ opentelemetry-sdk
 opentelemetry-exporter-gcp-trace
 opentelemetry-exporter-otlp-proto-http
 opentelemetry-instrumentation-fastapi
+pyroscope-io>=1.2.3

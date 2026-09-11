@@ -73,6 +73,21 @@ if OTEL_EXPORTER_OTLP_LOGS_ENDPOINT:
     except Exception as exc:
         logger.warning("Nao foi possivel inicializar OTLPLogExporter: %s", exc)
 
+# 3. Continuous Profiling (Pyroscope)
+PYROSCOPE_SERVER_ADDRESS = os.environ.get("PYROSCOPE_SERVER_ADDRESS")
+if PYROSCOPE_SERVER_ADDRESS:
+    try:
+        import pyroscope
+
+        pyroscope.configure(
+            application_name="service-api",
+            server_address=PYROSCOPE_SERVER_ADDRESS,
+            tags={"service_name": "service-api"},
+        )
+        logger.info("Pyroscope continuous profiling habilitado: %s", PYROSCOPE_SERVER_ADDRESS)
+    except Exception as exc:
+        logger.warning("Nao foi possivel inicializar Pyroscope: %s", exc)
+
 app = FastAPI(title="service-api")
 FastAPIInstrumentor.instrument_app(app, excluded_urls="healthz,readyz")
 
