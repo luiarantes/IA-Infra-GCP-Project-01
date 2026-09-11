@@ -32,7 +32,12 @@ data:
 
     compactor:
       compaction:
-        block_retention: 72h
+        block_retention: 24h
+        compacted_block_retention: 1h
+        max_compaction_objects: 50000
+      ring:
+        kvstore:
+          store: inmemory
 
     storage:
       trace:
@@ -74,10 +79,17 @@ spec:
           resources:
             requests:
               cpu: 200m
-              memory: 256Mi
+              memory: 384Mi
             limits:
               cpu: 1000m
-              memory: 1Gi
+              memory: 1536Mi
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 3200
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            failureThreshold: 30
           volumeMounts:
             - name: config
               mountPath: /etc/tempo
