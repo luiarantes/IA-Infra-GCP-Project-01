@@ -1,6 +1,6 @@
 # AIOps Platform — Multi-Target IaC, Observability & Self-Healing
 
-Plataforma Kubernetes efêmera, declarativa e multi-nuvem (**Local Kind**, **GCP GKE Standard SPOT** e **AWS EKS**), provisionada inteiramente por código (**Terraform**) com observabilidade 100% agnóstica (**OpenTelemetry + OpenObserve**) e agentes de IA que detectam incidentes, investigam a causa raiz e abrem Pull Requests de correção — sempre com aprovação humana obrigatória.
+Plataforma Kubernetes efêmera, declarativa e multi-nuvem (**Local Kind**, **GCP GKE Standard SPOT** e **AWS EKS [Em Desenvolvimento]**), provisionada inteiramente por código (**Terraform**) com observabilidade 100% agnóstica (**OpenTelemetry + OpenObserve**) e agentes de IA que detectam incidentes, investigam a causa raiz e abrem Pull Requests de correção — sempre com aprovação humana obrigatória.
 
 ---
 
@@ -11,13 +11,13 @@ Plataforma Kubernetes efêmera, declarativa e multi-nuvem (**Local Kind**, **GCP
                                                │
              ┌─────────────────────────────────┼────────────────────────────────┐
              ▼                                 ▼                                ▼
-   [ AMBIENTE LOCAL ]                 [ AMBIENTE GCP ]                 [ AMBIENTE AWS (Scaffold) ]
+   [ AMBIENTE LOCAL ]                 [ AMBIENTE GCP ]           [ AMBIENTE AWS (EM DESENVOLVIMENTO) ]
  infra/environments/local/          infra/environments/gcp/          infra/environments/aws/
- • Provider: tehcyx/kind            • Provider: google (GKE Spot)    • Provider: aws (EKS Spot)
- • Cluster Kind em Docker           • GKE Standard Zonal (1 nó Spot) • AWS EKS (1 nó Spot)
- • Pub/Sub Emulator                 • Cloud Pub/Sub Gerenciado       • Amazon SQS/SNS
- • OpenObserve (localhost:5080)     • OpenObserve (LoadBalancer IP)  • OpenObserve (ALB / NLB)
- • Custo: R$ 0,00                   • Custo: ~R$ 0,08/h              • Custo: ~R$ 0,09/h
+ • Provider: tehcyx/kind            • Provider: google (GKE Spot)    • Status: Scaffold / Em Construção
+ • Cluster Kind em Docker           • GKE Standard Zonal (1 nó Spot) • Alvo: AWS EKS (Spot)
+ • Pub/Sub Emulator                 • Cloud Pub/Sub Gerenciado       • Alvo: Amazon SQS/SNS
+ • OpenObserve (localhost:5080)     • OpenObserve (LoadBalancer IP)  • Alvo: OpenObserve (ALB / NLB)
+ • Custo: R$ 0,00                   • Custo: ~R$ 0,08/h              • Roadmap: Próxima Fase
              │                                 │                                │
              └─────────────────────────────────┼────────────────────────────────┘
                                                ▼
@@ -27,6 +27,13 @@ Plataforma Kubernetes efêmera, declarativa e multi-nuvem (**Local Kind**, **GCP
                             • OpenObserve (Armazenamento Colunar Parquet)
                             • In-Cluster AIOps Agent Runner (SQL Parquet)
 ```
+
+> [!NOTE]
+> **Status de Operação dos Ambientes**:
+> - 🟢 **Ambiente Local (Kind)**: 100% Operacional (Offline / Custo R$ 0,00).
+> - 🟢 **Ambiente Nuvem GCP (GKE Spot)**: 100% Operacional (Efêmero via CI/CD / ~R$ 0,08/h).
+> - 🟡 **Ambiente Nuvem AWS (EKS Spot)**: **Em Desenvolvimento / Scaffold** (Estrutura base de IaC em preparação para fases futuras).
+
 
 ---
 
@@ -137,7 +144,7 @@ repo/
 │   └── environments/
 │       ├── local/          # Terraform para Kind local
 │       ├── test/           # Terraform para GCP GKE Spot
-│       └── aws/            # Scaffold Terraform para AWS EKS
+│       └── aws/            # [Em Desenvolvimento] Scaffold Terraform para AWS EKS
 ├── apps/
 │   ├── gateway/            # Ponto de entrada HTTP
 │   ├── service-api/        # Producer Pub/Sub
