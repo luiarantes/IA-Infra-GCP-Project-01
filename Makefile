@@ -1,4 +1,4 @@
-.PHONY: help local-up local-up-simple local-up-distributed local-down local-status local-test local-agent local-load-test local-chaos-test local-traffic-start local-traffic-stop obs-ui grafana-ui pyroscope-ui minio-ui gcp-up gcp-down aws-up aws-down
+.PHONY: help local-up local-up-simple local-up-distributed local-down local-status local-test local-agent local-load-test local-chaos-test local-traffic-start local-traffic-stop local-dashboards-reload obs-ui grafana-ui pyroscope-ui minio-ui gcp-up gcp-down aws-up aws-down
 
 help:
 	@echo "========================================================================="
@@ -8,6 +8,7 @@ help:
 	@echo "    make local-up            - Provisiona cluster local via Terraform e sobe os servicos (modo do tfvars)"
 	@echo "    make local-up-simple     - Sobe ambiente local com Grafana Stack Simples (~8GB Docker)"
 	@echo "    make local-up-distributed - Sobe ambiente local com Grafana Stack Distribuida + MinIO S3 (~12GB Docker)"
+	@echo "    make local-dashboards-reload - Recarrega dashboards JSON no Grafana sem reiniciar cluster"
 	@echo "    make local-down          - Destroi cluster local via Terraform (custo zero)"
 	@echo "    make local-status        - Exibe status dos pods e consumo de CPU/Memoria"
 	@echo "    make local-test          - Envia requisicoes de teste para os servicos"
@@ -20,6 +21,7 @@ help:
 	@echo "    make grafana-ui          - Abre a interface web do Grafana OSS no navegador"
 	@echo "    make pyroscope-ui        - Abre a interface web do Pyroscope no navegador"
 	@echo "    make minio-ui            - Abre a interface web do MinIO Console no navegador"
+
 	@echo ""
 	@echo "  ☁️ Ambiente Nuvem GCP (GKE Standard Zonal SPOT + Pub/Sub):"
 	@echo "    make gcp-up              - Dispara terraform-apply.yml no GitHub Actions"
@@ -111,6 +113,14 @@ pyroscope-ui:
 minio-ui:
 	@echo "🗄️ Abrindo MinIO Console em http://localhost:9001 ..."
 	@open http://localhost:9001 2>/dev/null || echo "Acesse: http://localhost:9001 (Login: minioadmin / minioadmin)"
+
+local-dashboards-reload:
+	@echo "🔄 Atualizando dashboards do Grafana a partir de observability/grafana-dashboards.yaml..."
+	@kubectl apply -f observability/grafana-dashboards.yaml
+	@kubectl rollout restart deployment/grafana
+	@kubectl rollout status deployment/grafana --timeout=60s
+	@echo "✅ Dashboards recarregados com sucesso no Grafana!"
+
 
 
 gcp-up:

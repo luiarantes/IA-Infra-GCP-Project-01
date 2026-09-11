@@ -1,0 +1,683 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-providers
+  namespace: default
+data:
+  dashboards.yaml: |
+    apiVersion: 1
+    providers:
+      - name: "aiops-platform"
+        orgId: 1
+        folder: "AIOps Platform"
+        type: file
+        disableDeletion: false
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards-json
+  namespace: default
+data:
+  aiops-platform-overview.json: |
+    {
+      "annotations": {
+        "list": []
+      },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 1,
+      "id": null,
+      "links": [],
+      "liveNow": false,
+      "panels": [
+        {
+          "collapsed": false,
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+          "id": 100,
+          "title": "📊 Visão Geral de Tráfego & Métricas RED (Rate, Errors, Duration)",
+          "type": "row"
+        },
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "palette-classic" },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "Linhas / seg",
+                "drawStyle": "line",
+                "fillOpacity": 15,
+                "lineInterpolation": "smooth",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "showPoints": "auto",
+                "spanNulls": false
+              },
+              "unit": "reqps"
+            },
+            "overrides": []
+          },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 1 },
+          "id": 1,
+          "options": {
+            "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" },
+            "tooltip": { "mode": "multi", "sort": "desc" }
+          },
+          "title": "Vazão por Microsserviço (Rate / Throughput)",
+          "type": "timeseries",
+          "targets": [
+            {
+              "datasource": { "type": "loki", "uid": "loki" },
+              "editorMode": "code",
+              "expr": "sum by (service_name) (rate({service_name=~\"$service\"}[1m]))",
+              "legendFormat": "{{service_name}}",
+              "queryType": "range",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "palette-classic" },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "Erros / seg",
+                "drawStyle": "line",
+                "fillOpacity": 20,
+                "lineInterpolation": "smooth",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "showPoints": "auto",
+                "spanNulls": false
+              },
+              "unit": "errps"
+            },
+            "overrides": []
+          },
+          "gridPos": { "h": 8, "w": 8, "x": 12, "y": 1 },
+          "id": 2,
+          "options": {
+            "legend": { "calcs": ["max"], "displayMode": "table", "placement": "bottom" },
+            "tooltip": { "mode": "multi", "sort": "desc" }
+          },
+          "title": "Taxa de Erros e Falhas (Errors 5xx / Exceções)",
+          "type": "timeseries",
+          "targets": [
+            {
+              "datasource": { "type": "loki", "uid": "loki" },
+              "editorMode": "code",
+              "expr": "sum by (service_name) (rate({service_name=~\"$service\"} |~ \"(?i)(error|5[0-9]{2}|exception|fail)\" [1m]))",
+              "legendFormat": "{{service_name}}",
+              "queryType": "range",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 1 },
+                  { "color": "red", "value": 5 }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": { "h": 8, "w": 4, "x": 20, "y": 1 },
+          "id": 3,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": { "calcs": ["sum"], "fields": "", "values": false },
+            "textMode": "auto"
+          },
+          "title": "Total de Erros no Período",
+          "type": "stat",
+          "targets": [
+            {
+              "datasource": { "type": "loki", "uid": "loki" },
+              "editorMode": "code",
+              "expr": "sum(count_over_time({service_name=~\"$service\"} |~ \"(?i)(error|5[0-9]{2}|exception|fail)\" [$__range]))",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "collapsed": false,
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 },
+          "id": 101,
+          "title": "📡 Pipeline do OpenTelemetry Collector (Ingestão Fan-Out)",
+          "type": "row"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "openobserve" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "palette-classic" },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "Spans / seg",
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "lineInterpolation": "smooth",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "showPoints": "auto",
+                "spanNulls": false
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": { "h": 7, "w": 12, "x": 0, "y": 10 },
+          "id": 4,
+          "options": {
+            "legend": { "calcs": ["lastNotNull"], "displayMode": "table", "placement": "bottom" },
+            "tooltip": { "mode": "multi", "sort": "desc" }
+          },
+          "title": "Spans OTel Recebidos vs Exportados",
+          "type": "timeseries",
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "openobserve" },
+              "editorMode": "code",
+              "expr": "sum(rate(otelcol_receiver_accepted_spans[1m]))",
+              "legendFormat": "Spans Recebidos/s",
+              "range": true,
+              "refId": "A"
+            },
+            {
+              "datasource": { "type": "prometheus", "uid": "openobserve" },
+              "editorMode": "code",
+              "expr": "sum(rate(otelcol_exporter_sent_spans[1m]))",
+              "legendFormat": "Spans Exportados/s",
+              "range": true,
+              "refId": "B"
+            }
+          ]
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "openobserve" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "palette-classic" },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "Logs / seg",
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "lineInterpolation": "smooth",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "showPoints": "auto",
+                "spanNulls": false
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": { "h": 7, "w": 12, "x": 12, "y": 10 },
+          "id": 5,
+          "options": {
+            "legend": { "calcs": ["lastNotNull"], "displayMode": "table", "placement": "bottom" },
+            "tooltip": { "mode": "multi", "sort": "desc" }
+          },
+          "title": "Logs OTel Recebidos vs Exportados (Loki + OpenObserve)",
+          "type": "timeseries",
+          "targets": [
+            {
+              "datasource": { "type": "prometheus", "uid": "openobserve" },
+              "editorMode": "code",
+              "expr": "sum(rate(otelcol_receiver_accepted_log_records[1m]))",
+              "legendFormat": "Logs Recebidos/s",
+              "range": true,
+              "refId": "A"
+            },
+            {
+              "datasource": { "type": "prometheus", "uid": "openobserve" },
+              "editorMode": "code",
+              "expr": "sum(rate(otelcol_exporter_sent_log_records[1m]))",
+              "legendFormat": "Logs Exportados/s",
+              "range": true,
+              "refId": "B"
+            }
+          ]
+        },
+        {
+          "collapsed": false,
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 17 },
+          "id": 102,
+          "title": "🔍 Logs ao Vivo com Correlacionamento de Traces (Loki ➔ Tempo)",
+          "type": "row"
+        },
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "gridPos": { "h": 12, "w": 24, "x": 0, "y": 18 },
+          "id": 6,
+          "options": {
+            "dedupStrategy": "none",
+            "enableLogDetails": true,
+            "prettifyLogMessage": true,
+            "showCommonLabels": false,
+            "showLabels": true,
+            "sortOrder": "Descending",
+            "wrapLogMessage": true
+          },
+          "title": "Stream de Logs (Loki) — Clique no TraceID para abrir o Trace no Tempo",
+          "type": "logs",
+          "targets": [
+            {
+              "datasource": { "type": "loki", "uid": "loki" },
+              "editorMode": "code",
+              "expr": "{service_name=~\"$service\"}",
+              "queryType": "range",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "collapsed": false,
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 30 },
+          "id": 103,
+          "title": "🕸️ Rastreamento Distribuído no Grafana Tempo (APM & Spans)",
+          "type": "row"
+        },
+        {
+          "datasource": { "type": "tempo", "uid": "tempo" },
+          "gridPos": { "h": 10, "w": 24, "x": 0, "y": 31 },
+          "id": 7,
+          "options": {},
+          "title": "Pesquisa de Traces Recentes (Tempo)",
+          "type": "traces",
+          "targets": [
+            {
+              "datasource": { "type": "tempo", "uid": "tempo" },
+              "limit": 20,
+              "query": "{}",
+              "queryType": "traceql",
+              "refId": "A"
+            }
+          ]
+        }
+      ],
+      "refresh": "5s",
+      "schemaVersion": 39,
+      "tags": ["aiops", "kubernetes", "microservices", "red-metrics"],
+      "templating": {
+        "list": [
+          {
+            "current": { "selected": true, "text": "All", "value": "$__all" },
+            "description": "Selecione um ou mais microsserviços para filtrar métricas e logs",
+            "hide": 0,
+            "includeAll": true,
+            "label": "Microsserviço",
+            "multi": true,
+            "name": "service",
+            "options": [
+              { "selected": true, "text": "All", "value": "$__all" },
+              { "selected": false, "text": "gateway", "value": "gateway" },
+              { "selected": false, "text": "buscacep-api", "value": "buscacep-api" },
+              { "selected": false, "text": "buscacep-worker", "value": "buscacep-worker" },
+              { "selected": false, "text": "service-api", "value": "service-api" },
+              { "selected": false, "text": "service-worker", "value": "service-worker" },
+              { "selected": false, "text": "service-downstream", "value": "service-downstream" }
+            ],
+            "query": "gateway,buscacep-api,buscacep-worker,service-api,service-worker,service-downstream",
+            "queryValue": "",
+            "skipUrlSync": false,
+            "type": "custom"
+          }
+        ]
+      },
+      "time": {
+        "from": "now-15m",
+        "to": "now"
+      },
+      "timepicker": {
+        "refresh_intervals": ["5s", "10s", "30s", "1m"]
+      },
+      "timezone": "browser",
+      "title": "AIOps Platform — Microsserviços & RED Metrics",
+      "uid": "aiops-platform-overview",
+      "version": 1
+    }
+  aiops-buscacep.json: |
+    {
+      "annotations": {
+        "list": []
+      },
+      "editable": true,
+      "fiscalYearStartMonth": 0,
+      "graphTooltip": 1,
+      "id": null,
+      "links": [],
+      "liveNow": false,
+      "panels": [
+        {
+          "collapsed": false,
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+          "id": 100,
+          "title": "📍 KPIs de Negócio e Vazão — BuscaCEP",
+          "type": "row"
+        },
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "thresholds" },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "blue", "value": null },
+                  { "color": "green", "value": 1 }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": { "h": 6, "w": 6, "x": 0, "y": 1 },
+          "id": 1,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": { "calcs": ["sum"], "fields": "", "values": false },
+            "textMode": "auto"
+          },
+          "title": "Total de Consultas de CEP (API)",
+          "type": "stat",
+          "targets": [
+            {
+              "datasource": { "type": "loki", "uid": "loki" },
+              "editorMode": "code",
+              "expr": "sum(count_over_time({service_name=\"buscacep-api\"} |~ \"(?i)cep\" [$__range]))",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "thresholds" },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "purple", "value": null },
+                  { "color": "green", "value": 1 }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": { "h": 6, "w": 6, "x": 6, "y": 1 },
+          "id": 2,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": { "calcs": ["sum"], "fields": "", "values": false },
+            "textMode": "auto"
+          },
+          "title": "Eventos Publicados no Pub/Sub",
+          "type": "stat",
+          "targets": [
+            {
+              "datasource": { "type": "loki", "uid": "loki" },
+              "editorMode": "code",
+              "expr": "sum(count_over_time({service_name=\"buscacep-api\"} |~ \"(?i)(public|publish|pubsub)\" [$__range]))",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "thresholds" },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "orange", "value": null },
+                  { "color": "green", "value": 1 }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": { "h": 6, "w": 6, "x": 12, "y": 1 },
+          "id": 3,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": { "calcs": ["sum"], "fields": "", "values": false },
+            "textMode": "auto"
+          },
+          "title": "Eventos Processados pelo Worker",
+          "type": "stat",
+          "targets": [
+            {
+              "datasource": { "type": "loki", "uid": "loki" },
+              "editorMode": "code",
+              "expr": "sum(count_over_time({service_name=\"buscacep-worker\"} |~ \"(?i)(process|receb|consum)\" [$__range]))",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "thresholds" },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 1 },
+                  { "color": "red", "value": 5 }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": { "h": 6, "w": 6, "x": 18, "y": 1 },
+          "id": 4,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": { "calcs": ["sum"], "fields": "", "values": false },
+            "textMode": "auto"
+          },
+          "title": "Erros no BuscaCEP (API/Worker)",
+          "type": "stat",
+          "targets": [
+            {
+              "datasource": { "type": "loki", "uid": "loki" },
+              "editorMode": "code",
+              "expr": "sum(count_over_time({service_name=~\"buscacep.*\"} |~ \"(?i)(error|5[0-9]{2}|exception)\" [$__range]))",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "collapsed": false,
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 7 },
+          "id": 101,
+          "title": "📈 Taxa de Consultas & Mensageria Assíncrona no Tempo",
+          "type": "row"
+        },
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "palette-classic" },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "Linhas / seg",
+                "drawStyle": "line",
+                "fillOpacity": 15,
+                "lineInterpolation": "smooth",
+                "lineWidth": 2,
+                "pointSize": 5,
+                "showPoints": "auto",
+                "spanNulls": false
+              },
+              "unit": "reqps"
+            },
+            "overrides": []
+          },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "id": 5,
+          "options": {
+            "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" },
+            "tooltip": { "mode": "multi", "sort": "desc" }
+          },
+          "title": "Consultas BuscaCEP API vs Execução BuscaCEP Worker",
+          "type": "timeseries",
+          "targets": [
+            {
+              "datasource": { "type": "loki", "uid": "loki" },
+              "editorMode": "code",
+              "expr": "sum by (service_name) (rate({service_name=~\"buscacep.*\"}[1m]))",
+              "legendFormat": "{{service_name}}",
+              "queryType": "range",
+              "refId": "A"
+            }
+          ]
+        },
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "fieldConfig": {
+            "defaults": {
+              "color": { "mode": "palette-classic" },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "Logs / seg",
+                "drawStyle": "bars",
+                "fillOpacity": 30,
+                "lineWidth": 1,
+                "pointSize": 5,
+                "showPoints": "auto",
+                "spanNulls": false
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+          "id": 6,
+          "options": {
+            "legend": { "calcs": ["sum"], "displayMode": "table", "placement": "bottom" },
+            "tooltip": { "mode": "multi", "sort": "desc" }
+          },
+          "title": "Eventos de Mensageria Pub/Sub Correlacionados",
+          "type": "timeseries",
+          "targets": [
+            {
+              "datasource": { "type": "loki", "uid": "loki" },
+              "editorMode": "code",
+              "expr": "sum(rate({service_name=\"buscacep-api\"} |~ \"(?i)(publish|pubsub)\" [1m]))",
+              "legendFormat": "Publicações Pub/Sub",
+              "queryType": "range",
+              "refId": "A"
+            },
+            {
+              "datasource": { "type": "loki", "uid": "loki" },
+              "editorMode": "code",
+              "expr": "sum(rate({service_name=\"buscacep-worker\"} |~ \"(?i)(process|receb)\" [1m]))",
+              "legendFormat": "Consumo no Worker",
+              "queryType": "range",
+              "refId": "B"
+            }
+          ]
+        },
+        {
+          "collapsed": false,
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 16 },
+          "id": 102,
+          "title": "📜 Logs Correlacionados (BuscaCEP API + Worker)",
+          "type": "row"
+        },
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "gridPos": { "h": 12, "w": 24, "x": 0, "y": 17 },
+          "id": 7,
+          "options": {
+            "dedupStrategy": "none",
+            "enableLogDetails": true,
+            "prettifyLogMessage": true,
+            "showCommonLabels": false,
+            "showLabels": true,
+            "sortOrder": "Descending",
+            "wrapLogMessage": true
+          },
+          "title": "Logs Unificados — Clique no TraceID para abrir o Trace no Tempo",
+          "type": "logs",
+          "targets": [
+            {
+              "datasource": { "type": "loki", "uid": "loki" },
+              "editorMode": "code",
+              "expr": "{service_name=~\"buscacep.*\"}",
+              "queryType": "range",
+              "refId": "A"
+            }
+          ]
+        }
+      ],
+      "refresh": "5s",
+      "schemaVersion": 39,
+      "tags": ["aiops", "buscacep", "fastapi", "pubsub"],
+      "templating": {
+        "list": []
+      },
+      "time": {
+        "from": "now-15m",
+        "to": "now"
+      },
+      "timepicker": {
+        "refresh_intervals": ["5s", "10s", "30s", "1m"]
+      },
+      "timezone": "browser",
+      "title": "AIOps Platform — BuscaCEP & Mensageria Pub/Sub",
+      "uid": "aiops-buscacep",
+      "version": 1
+    }
