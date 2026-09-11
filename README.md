@@ -7,32 +7,33 @@ Plataforma Kubernetes efêmera, declarativa e multi-nuvem (**Local Kind**, **GCP
 ## 🏗️ Arquitetura Multi-Target
 
 ```
-                                  [ TERRAFORM IAC UNIFICADO ]
-                                               │
-             ┌─────────────────────────────────┼────────────────────────────────┐
-             ▼                                 ▼                                ▼
-   [ AMBIENTE LOCAL ]                 [ AMBIENTE GCP ]           [ AMBIENTE AWS (EM DESENVOLVIMENTO) ]
- infra/environments/local/          infra/environments/gcp/          infra/environments/aws/
- • Provider: tehcyx/kind            • Provider: google (GKE Spot)    • Status: Scaffold / Em Construção
- • Cluster Kind em Docker           • GKE Standard Zonal (1 nó Spot) • Alvo: AWS EKS (Spot)
- • Pub/Sub Emulator                 • Cloud Pub/Sub Gerenciado       • Alvo: Amazon SQS/SNS
- • OpenObserve (localhost:5080)     • OpenObserve (LoadBalancer IP)  • Alvo: OpenObserve (ALB / NLB)
- • Custo: R$ 0,00                   • Custo: ~R$ 0,08/h              • Roadmap: Próxima Fase
-             │                                 │                                │
-             └─────────────────────────────────┼────────────────────────────────┘
-                                               ▼
-                            [ CAMADA DE APLICAÇÃO 100% AGNÓSTICA ]
-                            • Microsserviços FastAPI (OTLP HTTP / 4318)
-                            • OpenTelemetry Collector Gateway (Two-Tier)
-                            • OpenObserve (Armazenamento Colunar Parquet)
-                            • In-Cluster AIOps Agent Runner (SQL Parquet)
+                     [ TERRAFORM IAC UNIFICADO ]
+                                  │
+         ┌────────────────────────┼────────────────────────┐
+         ▼                        ▼                        ▼
+  [ AMBIENTE LOCAL ]       [ AMBIENTE GCP ]         [ AMBIENTE AWS ]
+  • Kind (Docker)          • GKE Spot               • EKS Spot (Scaffold)
+  • Custo: R$ 0,00         • Custo: ~R$ 0,08/h      • Em Desenvolvimento
+         │                        │                        │
+         └────────────────────────┼────────────────────────┘
+                                  ▼
+              [ CAMADA DE APLICAÇÃO 100% AGNÓSTICA ]
+              • Microsserviços FastAPI (OTLP HTTP / 4318)
+              • OpenTelemetry Collector Gateway (Two-Tier)
+              • OpenObserve + Grafana Labs (Tempo, Loki)
+              • In-Cluster AIOps Agent Runner (SQL Parquet)
 ```
 
-> [!NOTE]
-> **Status de Operação dos Ambientes**:
-> - 🟢 **Ambiente Local (Kind)**: 100% Operacional (Offline / Custo R$ 0,00).
-> - 🟢 **Ambiente Nuvem GCP (GKE Spot)**: 100% Operacional (Efêmero via CI/CD / ~R$ 0,08/h).
-> - 🟡 **Ambiente Nuvem AWS (EKS Spot)**: **Em Desenvolvimento / Scaffold** (Estrutura base de IaC em preparação para fases futuras).
+| Componente | 🟢 Ambiente Local (Kind) | 🟢 Ambiente Nuvem GCP | 🟡 Ambiente Nuvem AWS |
+| :--- | :--- | :--- | :--- |
+| **Status** | **100% Operacional** (Offline) | **100% Operacional** (Efêmero CI/CD) | **Em Desenvolvimento / Scaffold** |
+| **Diretório IaC** | `infra/environments/local/` | `infra/environments/test/` | `infra/environments/aws/` |
+| **Provider** | `tehcyx/kind` | `hashicorp/google` | `hashicorp/aws` |
+| **Cluster K8s** | Kind em Docker | GKE Standard Zonal (Spot) | Alvo: AWS EKS (Spot) |
+| **Mensageria** | Pub/Sub Emulator | Google Cloud Pub/Sub | Alvo: Amazon SQS/SNS |
+| **Observabilidade** | OpenObserve + Grafana Labs | OpenObserve + Grafana Labs | Alvo: OpenObserve + Grafana Labs |
+| **Custo Estimado** | **R$ 0,00** | **~R$ 0,08/h** | *Roadmap: Próxima Fase* |
+
 
 
 ---
