@@ -45,9 +45,23 @@ A plataforma utiliza uma arquitetura de observabilidade **100% agnóstica de for
 3. **Correlação Multidimensional (Trace-to-Log & Trace-to-Profile)**:
    - No Grafana, clicar em uma linha de log no **Loki** abre o trace no **Tempo**.
    - O **Pyroscope** captura contínuos perfis de CPU (Flamegraphs) das aplicações.
-4. **Modos de Operação FinOps (Toggle no Terraform)**:
-   - **Modo `simple`**: Execução monolítica leve (1 nó Spot no GKE ou Kind local), consumo de ~500m CPU e ~768Mi RAM, custo de centavos por hora.
-   - **Modo `distributed`**: Execução corporativa com buckets GCS dedicados (`tempo-traces`, `loki-chunks`) via Workload Identity para laboratórios de alta escala.
+4. **Modos de Operação FinOps (Toggle no Terraform `grafana_stack_mode`)**:
+   - **Modo `simple` (Monolítico Leve)**:
+     - Execução single-binary com armazenamento em disco local do container/PVC.
+     - Ideal para notebooks e estações de trabalho de desenvolvedores (**mínimo 6 GB RAM / recomendado 8 GB RAM no Docker Desktop**).
+     - Custo praticamente nulo no GKE (roda em 1 nó Spot pequeno).
+   - **Modo `distributed` (Arquitetura Corporativa de Produção)**:
+     - Componentes desacoplados com **Object Storage** como única fonte da verdade (Google Cloud Storage no GCP ou MinIO S3 no Kind local).
+     - **Separação CQRS (Escrita vs. Leitura)**: Ingesters recebem milhões de eventos sem sofrer concorrência de CPU/RAM quando usuários executam queries pesadas no Grafana.
+     - **Resiliência a Nós Spot**: Como os dados vão direto para o bucket, se um nó Spot for desligado pelo provedor de nuvem, o pod sobe em outro nó sem precisar anexar/desanexar discos físicos.
+     - **Economia FinOps**: O armazenamento em Object Storage (GCS/S3 a ~US$ 0,02/GB) custa até **10x menos** que discos SSD Persistent Disk / EBS (~US$ 0,17/GB).
+     - Requer **10 a 12 GB de RAM e 4 a 6 vCPUs** no Docker Desktop local para suportar o MinIO e as réplicas desacopladas.
+
+| Modo | Arquitetura | Storage Backend | Requisito Mínimo Docker | Custo Estimado Nuvem | Recomendado Para |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **`simple`** | Monolítico Leve | Disco local / PVC | **8 GB RAM / 4 vCPUs** | ~R$ 0,08/h (1 nó Spot) | Estudo local, labs diários e testes pontuais |
+| **`distributed`** | Microsserviços Desacoplados | **Object Storage** (GCS / MinIO S3) | **12 GB RAM / 6 vCPUs** | ~R$ 0,25/h (GCS + Nós Spot) | Simulação de ambientes reais de produção corporativa |
+
 
 ---
 

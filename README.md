@@ -60,6 +60,29 @@ Plataforma Kubernetes efêmera, declarativa e multi-nuvem (**Local Kind**, **GCP
 
 ---
 
+## 📊 Stack de Observabilidade Dual-Engine & Modos de Operação
+
+A plataforma opera com **duas stacks completas de observabilidade** alimentadas simultaneamente por um pipeline de **Fan-Out via OpenTelemetry Collector**:
+1. **OpenObserve**: Motor colunar ultrarrápido (Apache Parquet + Apache DataFusion SQL).
+2. **Grafana Labs In-Cluster**: Suíte analítica corporativa com **Grafana OSS**, **Tempo** (traces), **Loki** (logs), **Pyroscope** (continuous profiling) e **Beyla** (auto-instrumentação eBPF no kernel Linux).
+
+👉 **Guia Detalhado da Stack:** [Consulte a documentação completa em `observability/README.md`](observability/README.md).
+
+### Por que existem dois modos de implantação? (`simple` vs `distributed`)
+
+| Critério | Modo `simple` (Monolítico Leve) | Modo `distributed` (Arquitetura de Produção) |
+| :--- | :--- | :--- |
+| **Objetivo** | **Estudo local e desenvolvimento rápido** | **Simulação de ambiente produtivo corporativo** |
+| **Armazenamento** | Filesystem local no container / PVC | **Object Storage Desacoplado** (Google GCS ou MinIO S3) |
+| **Separação CQRS**| Leitura e escrita competem no mesmo pod | **Isolamento total**: Queriers escalam sem afetar Ingestão |
+| **Resiliência FinOps**| Depende de anexar/desanexar discos | **100% Stateless**: nós Spot podem morrer sem perda de dados |
+| **Custo na Nuvem** | Discos persistentes caros (~US$ 0,17/GB) | **Object Storage ~10x mais barato (~US$ 0,02/GB)** |
+| **Requisitos Docker**| **8 GB RAM / 4 vCPUs** | **12 GB RAM / 6 vCPUs** |
+
+> **Como alternar:** O modo é selecionado de forma declarativa via variável `grafana_stack_mode` no Terraform do GCP (`infra/environments/test/`) e no Terraform Local (`infra/environments/local/`).
+
+---
+
 ## 🚀 Como Executar
 
 ### Opção 1: Ambiente Local (Kind + Terraform) — 100% Gratuito & Offline
@@ -73,8 +96,11 @@ make local-up
 
 * **Gateway de Entrada**: `http://localhost:8080`
 * **BuscaCEP Web & API**: `http://localhost:8000`
+* **Grafana OSS (Dashboards, Tempo, Loki)**: `http://localhost:3000` *(Login: `admin` / `admin`)*
+* **Grafana Pyroscope (Continuous Profiling)**: `http://localhost:4040`
 * **OpenObserve Web UI**: `http://localhost:5080` *(Login: `admin@example.com` / `ComplexPassword123#`)*
 * **Pub/Sub Emulator**: `http://localhost:8085`
+
 
 ```bash
 # Envia requisições de teste
