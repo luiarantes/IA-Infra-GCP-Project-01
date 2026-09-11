@@ -7,7 +7,8 @@ export const options = {
 };
 
 const GATEWAY_URL = __ENV.GATEWAY_URL || "http://gateway:8080";
-const BUSCACEP_URL = __ENV.BUSCACEP_URL || "http://buscacep-api:8000";
+const BUSCACEP_URL = __ENV.BUSCACEP_URL || "http://buscacep-api:80";
+
 
 const CEPS = ["01310-100", "01001-000", "20040-002", "70040-010", "30130-000"];
 
