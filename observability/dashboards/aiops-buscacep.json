@@ -122,7 +122,8 @@
         {
           "datasource": { "type": "loki", "uid": "loki" },
           "editorMode": "code",
-          "expr": "sum(count_over_time({service_name=\"buscacep-worker\"} |~ \"(?i)(process|receb|consum)\" [$__range]))",
+          "expr": "sum(count_over_time({service_name=\"buscacep-worker\"} |~ \"(?i)(process|receb|consum|worker|consultado)\" [$__range]))",
+
           "refId": "A"
         }
       ]
@@ -254,7 +255,8 @@
         {
           "datasource": { "type": "loki", "uid": "loki" },
           "editorMode": "code",
-          "expr": "sum(rate({service_name=\"buscacep-worker\"} |~ \"(?i)(process|receb)\" [1m]))",
+          "expr": "sum(rate({service_name=\"buscacep-worker\"} |~ \"(?i)(process|receb|worker|consultado)\" [1m]))",
+
           "legendFormat": "Consumo no Worker",
           "queryType": "range",
           "refId": "B"

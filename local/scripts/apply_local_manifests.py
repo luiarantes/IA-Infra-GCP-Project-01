@@ -100,6 +100,8 @@ def main():
               value: "pubsub-emulator:8085"
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
               value: "http://otel-collector:4318/v1/traces"
+            - name: OTEL_EXPORTER_OTLP_LOGS_ENDPOINT
+              value: "http://otel-collector:4318/v1/logs"
 """
             content = content.replace("          env:\n", "          env:\n" + env_extra)
             apply_yaml(content)
@@ -109,9 +111,12 @@ def main():
               value: "pubsub-emulator:8085"
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
               value: "http://otel-collector:4318/v1/traces"
+            - name: OTEL_EXPORTER_OTLP_LOGS_ENDPOINT
+              value: "http://otel-collector:4318/v1/logs"
 """
             content = content.replace("          env:\n", "          env:\n" + env_extra)
             apply_yaml(content)
+
         with open(APPS_DIR / "k8s" / "service.yaml") as f:
             apply_yaml(f.read())
         with open(APPS_DIR / "k8s" / "hpa.yaml") as f:
