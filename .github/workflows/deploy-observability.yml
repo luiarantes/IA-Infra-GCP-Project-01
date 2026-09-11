@@ -48,6 +48,9 @@ jobs:
           kubectl apply -f observability/openobserve.yaml
 
           if [ "${STACK_MODE}" = "distributed" ]; then
+            echo "🧹 Removendo instâncias e configurações anteriores do modo simples para migração limpa de storage..."
+            kubectl delete deployment loki tempo --ignore-not-found
+            kubectl delete configmap loki-config tempo-config --ignore-not-found
             echo "📦 Aplicando Loki e Tempo configurados com Google Cloud Storage (GCS)..."
             envsubst '${PROJECT_ID}' < observability/distributed/loki-distributed.yaml | kubectl apply -f -
             envsubst '${PROJECT_ID}' < observability/distributed/tempo-distributed.yaml | kubectl apply -f -
