@@ -3,7 +3,10 @@ name: Terraform Plan
 on:
   pull_request:
     paths:
-      - "infra/**"
+      - "infra/environments/test/**"
+      - "infra/modules/**"
+      - "!infra/environments/local/**"
+      - "!infra/environments/aws/**"
 
 permissions:
   contents: read

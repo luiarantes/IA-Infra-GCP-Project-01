@@ -4,7 +4,10 @@ on:
   push:
     branches: [main]
     paths:
-      - "infra/**"
+      - "infra/environments/test/**"
+      - "infra/modules/**"
+      - "!infra/environments/local/**"
+      - "!infra/environments/aws/**"
   workflow_dispatch: {}
 
 permissions:

@@ -1,10 +1,6 @@
 name: Deploy Observability
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "observability/**"
   workflow_dispatch: {}
 
 permissions:

@@ -7,14 +7,6 @@ name: Deploy Microservices
 # nos manifests do podinfo.
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "apps/gateway/**"
-      - "apps/service-api/**"
-      - "apps/service-worker/**"
-      - "apps/service-downstream/**"
-      - "apps/shared/**"
   workflow_dispatch: {}
 
 permissions:
