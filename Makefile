@@ -1,11 +1,13 @@
-.PHONY: help local-up local-down local-status local-test local-agent local-load-test local-chaos-test local-traffic-start local-traffic-stop obs-ui gcp-up gcp-down aws-up aws-down
+.PHONY: help local-up local-up-simple local-up-distributed local-down local-status local-test local-agent local-load-test local-chaos-test local-traffic-start local-traffic-stop obs-ui grafana-ui pyroscope-ui minio-ui gcp-up gcp-down aws-up aws-down
 
 help:
 	@echo "========================================================================="
 	@echo "           AIOps Platform CLI — Multi-Target IaC & Observability         "
 	@echo "========================================================================="
 	@echo "  💻 Ambiente Local (Kind + Terraform + OpenObserve + Agentes):"
-	@echo "    make local-up            - Provisiona cluster local via Terraform e sobe os servicos"
+	@echo "    make local-up            - Provisiona cluster local via Terraform e sobe os servicos (modo do tfvars)"
+	@echo "    make local-up-simple     - Sobe ambiente local com Grafana Stack Simples (~8GB Docker)"
+	@echo "    make local-up-distributed - Sobe ambiente local com Grafana Stack Distribuida + MinIO S3 (~12GB Docker)"
 	@echo "    make local-down          - Destroi cluster local via Terraform (custo zero)"
 	@echo "    make local-status        - Exibe status dos pods e consumo de CPU/Memoria"
 	@echo "    make local-test          - Envia requisicoes de teste para os servicos"
@@ -15,6 +17,9 @@ help:
 	@echo "    make local-traffic-stop  - Para gerador de trafego continuo"
 	@echo "    make local-chaos-test    - Executa teste de caos (Chaos Toolkit)"
 	@echo "    make obs-ui              - Abre a interface web do OpenObserve no navegador"
+	@echo "    make grafana-ui          - Abre a interface web do Grafana OSS no navegador"
+	@echo "    make pyroscope-ui        - Abre a interface web do Pyroscope no navegador"
+	@echo "    make minio-ui            - Abre a interface web do MinIO Console no navegador"
 	@echo ""
 	@echo "  ☁️ Ambiente Nuvem GCP (GKE Standard Zonal SPOT + Pub/Sub):"
 	@echo "    make gcp-up              - Dispara terraform-apply.yml no GitHub Actions"
@@ -31,6 +36,21 @@ local-up:
 	@terraform -chdir=infra/environments/local apply -auto-approve
 	@echo "✅ Ambiente local provisionado e operacional!"
 	@terraform -chdir=infra/environments/local output
+
+local-up-simple:
+	@echo "🚀 Provisionando ambiente local (Kind) no modo Grafana Stack Simples..."
+	@terraform -chdir=infra/environments/local init -upgrade
+	@terraform -chdir=infra/environments/local apply -var="grafana_stack_mode=simple" -auto-approve
+	@echo "✅ Ambiente local (Modo Simples) provisionado e operacional!"
+	@terraform -chdir=infra/environments/local output
+
+local-up-distributed:
+	@echo "🚀 Provisionando ambiente local (Kind) no modo Grafana Stack Distribuída (MinIO S3)..."
+	@terraform -chdir=infra/environments/local init -upgrade
+	@terraform -chdir=infra/environments/local apply -var="grafana_stack_mode=distributed" -auto-approve
+	@echo "✅ Ambiente local (Modo Distribuído) provisionado e operacional!"
+	@terraform -chdir=infra/environments/local output
+
 
 local-down:
 	@echo "🛑 Destruindo ambiente local com Terraform..."
@@ -87,6 +107,11 @@ grafana-ui:
 pyroscope-ui:
 	@echo "🔥 Abrindo Pyroscope em http://localhost:4040 ..."
 	@open http://localhost:4040 2>/dev/null || echo "Acesse: http://localhost:4040"
+
+minio-ui:
+	@echo "🗄️ Abrindo MinIO Console em http://localhost:9001 ..."
+	@open http://localhost:9001 2>/dev/null || echo "Acesse: http://localhost:9001 (Login: minioadmin / minioadmin)"
+
 
 gcp-up:
 	@echo "☁️ Disparando Terraform Apply no GCP via GitHub Actions..."

@@ -42,6 +42,11 @@ resource "kind_cluster" "default" {
         host_port      = var.pyroscope_port
         protocol       = "TCP"
       }
+      extra_port_mappings {
+        container_port = 30901
+        host_port      = var.minio_port
+        protocol       = "TCP"
+      }
     }
   }
 }
@@ -51,9 +56,11 @@ resource "null_resource" "deploy_local_workloads" {
 
   triggers = {
     cluster_id = kind_cluster.default.id
+    stack_mode = var.grafana_stack_mode
   }
 
   provisioner "local-exec" {
-    command = "bash ${path.module}/../../../local/scripts/local-env.sh provision"
+    command = "bash ${path.module}/../../../local/scripts/local-env.sh provision ${var.grafana_stack_mode}"
   }
 }
+

@@ -45,3 +45,20 @@ variable "pyroscope_port" {
   type        = number
   default     = 4040
 }
+
+variable "minio_port" {
+  description = "Porta no host para a Console Web do MinIO (Modo Distribuído)"
+  type        = number
+  default     = 9001
+}
+
+variable "grafana_stack_mode" {
+  description = "Modo de implantação da stack Grafana Labs: 'simple' (monolítico leve, ~8GB Docker) ou 'distributed' (produção com MinIO S3 Object Storage, ~12GB Docker)"
+  type        = string
+  default     = "simple"
+  validation {
+    condition     = contains(["simple", "distributed"], var.grafana_stack_mode)
+    error_message = "O valor de grafana_stack_mode deve ser 'simple' ou 'distributed'."
+  }
+}
+

@@ -33,13 +33,26 @@ create_cluster() {
 }
 
 provision_workloads() {
+    local MODE="${1:-${GRAFANA_STACK_MODE:-simple}}"
     check_prereqs
-    echo "📊 [2/6] Instalando serviços de infraestrutura local (Metrics-Server, Pub/Sub Emulator, OpenObserve, Grafana Stack)..."
+    echo "📊 [2/6] Instalando serviços de infraestrutura local (Metrics-Server, Pub/Sub Emulator, OpenObserve, Grafana Stack [Modo: ${MODE}])..."
     kubectl apply -f "${INFRA_DIR}/local/manifests/metrics-server.yaml"
     kubectl apply -f "${INFRA_DIR}/local/manifests/pubsub-emulator.yaml"
     kubectl apply -f "${INFRA_DIR}/local/manifests/openobserve.yaml"
-    kubectl apply -f "${INFRA_DIR}/observability/tempo.yaml"
-    kubectl apply -f "${INFRA_DIR}/observability/loki.yaml"
+
+    if [ "${MODE}" = "distributed" ]; then
+        echo "🗄️ Modo Distribuído ativo: provisionando MinIO S3 Object Storage..."
+        kubectl apply -f "${INFRA_DIR}/local/manifests/minio.yaml"
+        echo "⏳ Aguardando criação dos buckets S3 no MinIO..."
+        kubectl wait --for=condition=complete --timeout=60s job/minio-create-buckets -n default || true
+        kubectl apply -f "${INFRA_DIR}/observability/distributed/tempo-distributed-local.yaml"
+        kubectl apply -f "${INFRA_DIR}/observability/distributed/loki-distributed-local.yaml"
+    else
+        echo "📦 Modo Simples ativo: provisionando Tempo e Loki com armazenamento local..."
+        kubectl apply -f "${INFRA_DIR}/observability/tempo.yaml"
+        kubectl apply -f "${INFRA_DIR}/observability/loki.yaml"
+    fi
+
     kubectl apply -f "${INFRA_DIR}/observability/pyroscope.yaml"
     kubectl apply -f "${INFRA_DIR}/observability/beyla.yaml"
     kubectl apply -f "${INFRA_DIR}/observability/grafana.yaml"
@@ -72,6 +85,9 @@ provision_workloads() {
     kubectl rollout status deployment/metrics-server -n kube-system --timeout=90s || true
     kubectl rollout status deployment/pubsub-emulator --timeout=90s || true
     kubectl rollout status deployment/openobserve --timeout=90s || true
+    if [ "${MODE}" = "distributed" ]; then
+        kubectl rollout status deployment/minio --timeout=90s || true
+    fi
     kubectl rollout status deployment/tempo --timeout=90s || true
     kubectl rollout status deployment/loki --timeout=90s || true
     kubectl rollout status deployment/pyroscope --timeout=90s || true
@@ -90,6 +106,7 @@ provision_workloads() {
     echo ""
     echo "================================================================="
     echo " 🎉 Ambiente Local AIOps (Kind) 100% no ar e operacional!"
+    echo "    Modo de Observabilidade Grafana: ${MODE}"
     echo "================================================================="
     echo " 🌐 Gateway da Infra (Entrada):   http://localhost:8080"
     echo " 🌐 BuscaCEP Web & API:           http://localhost:8000"
@@ -99,12 +116,17 @@ provision_workloads() {
     echo "    (Login: admin / admin)"
     echo " 🔥 Pyroscope (Continuous Profile):http://localhost:4040"
     echo " 📬 Google Pub/Sub Emulator:      http://localhost:8085"
+    if [ "${MODE}" = "distributed" ]; then
+    echo " 🗄️ MinIO S3 Console (Storage):   http://localhost:9001"
+    echo "    (Login: minioadmin / minioadmin)"
+    fi
     echo "================================================================="
 }
 
 cluster_up() {
+    local MODE="${1:-${GRAFANA_STACK_MODE:-simple}}"
     create_cluster
-    provision_workloads
+    provision_workloads "${MODE}"
 }
 
 cluster_down() {
@@ -152,10 +174,10 @@ run_agent() {
 
 case "${1:-up}" in
     up)
-        cluster_up
+        cluster_up "${2:-${GRAFANA_STACK_MODE:-simple}}"
         ;;
     provision)
-        provision_workloads
+        provision_workloads "${2:-${GRAFANA_STACK_MODE:-simple}}"
         ;;
     down)
         cluster_down
@@ -170,7 +192,8 @@ case "${1:-up}" in
         run_agent
         ;;
     *)
-        echo "Uso: $0 {up|provision|down|status|test|agent}"
+        echo "Uso: $0 {up|provision|down|status|test|agent} [simple|distributed]"
         exit 1
         ;;
 esac
+

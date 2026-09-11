@@ -1,0 +1,22 @@
+# ==============================================================================
+# Configuração do Ambiente Local (Kind)
+# ==============================================================================
+cluster_name = "aiops-local"
+node_image   = "kindest/node:v1.31.0"
+
+# Portas no Host
+gateway_port         = 8080
+buscacep_port        = 8000
+openobserve_port     = 5080
+pubsub_emulator_port = 8085
+grafana_port         = 3000
+pyroscope_port       = 4040
+minio_port           = 9001
+
+# ==============================================================================
+# Modo da Stack de Observabilidade Grafana Labs (Tempo + Loki)
+# Opções:
+#   - "simple": Modo monolítico leve (armazenamento local /tmp, ~8 GB RAM / 4 vCPUs no Docker)
+#   - "distributed": Modo enterprise distribuído (MinIO S3 Object Storage, ~12 GB RAM / 4-6 vCPUs no Docker)
+# ==============================================================================
+grafana_stack_mode = "simple"

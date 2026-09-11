@@ -28,3 +28,8 @@ nodes:
       - containerPort: 30440
         hostPort: 4040
         protocol: TCP
+      # MinIO Console Web UI (Modo Distribuído S3)
+      - containerPort: 30901
+        hostPort: 9001
+        protocol: TCP
+

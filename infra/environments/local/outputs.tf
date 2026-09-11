@@ -32,3 +32,13 @@ output "pyroscope_url" {
   description = "URL para acesso a interface web do Pyroscope"
   value       = "http://localhost:${var.pyroscope_port}"
 }
+
+output "grafana_stack_mode" {
+  description = "Modo de implantacao da stack Grafana Labs ('simple' ou 'distributed')"
+  value       = var.grafana_stack_mode
+}
+
+output "minio_url" {
+  description = "URL para acesso a interface web do MinIO Console (Modo Distribuído)"
+  value       = "http://localhost:${var.minio_port}"
+}
