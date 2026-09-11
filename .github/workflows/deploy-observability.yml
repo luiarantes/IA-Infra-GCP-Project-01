@@ -1,7 +1,16 @@
 name: Deploy Observability
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      stack_mode:
+        description: "Modo de deploy da stack ('simple' ou 'distributed')"
+        required: false
+        default: "simple"
+        type: choice
+        options:
+          - simple
+          - distributed
 
 permissions:
   contents: read
@@ -30,13 +39,27 @@ jobs:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
 
       - name: Deploy da Stack de Observabilidade (OpenObserve + Grafana Labs LGTM + OTel Collector)
+        env:
+          PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          STACK_MODE: ${{ github.event.inputs.stack_mode || 'simple' }}
         run: |
           set -euo pipefail
+          echo "🚀 Realizando deploy da observabilidade no modo: ${STACK_MODE}..."
           kubectl apply -f observability/openobserve.yaml
-          kubectl apply -f observability/tempo.yaml
-          kubectl apply -f observability/loki.yaml
+
+          if [ "${STACK_MODE}" = "distributed" ]; then
+            echo "📦 Aplicando Loki e Tempo configurados com Google Cloud Storage (GCS)..."
+            envsubst '${PROJECT_ID}' < observability/distributed/loki-distributed.yaml | kubectl apply -f -
+            envsubst '${PROJECT_ID}' < observability/distributed/tempo-distributed.yaml | kubectl apply -f -
+          else
+            echo "📦 Aplicando Loki e Tempo no modo simples (monolítico)..."
+            kubectl apply -f observability/loki.yaml
+            kubectl apply -f observability/tempo.yaml
+          fi
+
           kubectl apply -f observability/pyroscope.yaml
           kubectl apply -f observability/beyla.yaml
+          kubectl apply -f observability/grafana-dashboards.yaml
           kubectl apply -f observability/grafana.yaml
           kubectl apply -f observability/otel-collector.yaml
 

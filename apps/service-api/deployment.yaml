@@ -32,6 +32,10 @@ spec:
               value: "${PROJECT_ID}"
             - name: PUBSUB_TOPIC
               value: "microservices-queue"
+            - name: OTEL_EXPORTER_OTLP_LOGS_ENDPOINT
+              value: "http://otel-collector:4318/v1/logs"
+            - name: PYROSCOPE_SERVER_ADDRESS
+              value: "http://pyroscope:4040"
           # GKE Autopilot exige requests explicitos em todo pod.
           # cpu 150m (nao 100m) de proposito: o startup com OpenTelemetry
           # e pesado o suficiente pra estourar sozinho o alvo de 50% do

@@ -8,7 +8,16 @@ on:
       - "infra/modules/**"
       - "!infra/environments/local/**"
       - "!infra/environments/aws/**"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      grafana_stack_mode:
+        description: "Modo de operacao da stack Grafana Labs ('simple' ou 'distributed')"
+        required: false
+        default: "simple"
+        type: choice
+        options:
+          - simple
+          - distributed
 
 permissions:
   contents: read
@@ -26,6 +35,7 @@ env:
   TF_VAR_budget_amount: 250
   TF_VAR_budget_currency_code: BRL
   TF_VAR_enable_budget_alert: true
+  TF_VAR_grafana_stack_mode: ${{ github.event.inputs.grafana_stack_mode || 'simple' }}
 
 jobs:
   apply:
