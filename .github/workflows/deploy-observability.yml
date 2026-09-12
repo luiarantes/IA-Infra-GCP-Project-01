@@ -77,6 +77,21 @@ jobs:
           kubectl rollout status daemonset/beyla --timeout=180s
           kubectl rollout status deployment/otel-collector --timeout=180s
 
+      - name: Diagnóstico de Falha no Rollout
+        if: failure()
+        run: |
+          echo "=== PODS STATUS ==="
+          kubectl get pods -o wide
+          echo "=== TEMPO POD LOGS ==="
+          kubectl logs deployment/tempo --tail=100 || true
+          echo "=== TEMPO POD DESCRIBE ==="
+          kubectl describe pod -l app=tempo || true
+          echo "=== LOKI POD LOGS ==="
+          kubectl logs deployment/loki --tail=100 || true
+          echo "=== LOKI POD DESCRIBE ==="
+          kubectl describe pod -l app=loki || true
+
+
       - name: Exibir IPs de Acesso Público (OpenObserve e Grafana)
         run: |
           echo "⏳ Aguardando atribuição de IPs públicos nos LoadBalancers..."
