@@ -11,6 +11,10 @@ on:
         options:
           - simple
           - distributed
+      unlock_id:
+        description: "Lock ID para liberar travamento de state (opcional)"
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -55,6 +59,11 @@ jobs:
           terraform init \
             -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
             -backend-config="prefix=environments/test"
+
+      - name: Terraform Force Unlock (se especificado)
+        if: ${{ github.event.inputs.unlock_id != '' }}
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform force-unlock -force "${{ github.event.inputs.unlock_id }}" || true
 
       - name: Terraform Apply
         working-directory: ${{ env.TF_WORKING_DIR }}
