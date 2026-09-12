@@ -1,13 +1,6 @@
 name: Terraform Apply
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "infra/environments/test/**"
-      - "infra/modules/**"
-      - "!infra/environments/local/**"
-      - "!infra/environments/aws/**"
   workflow_dispatch:
     inputs:
       grafana_stack_mode:
