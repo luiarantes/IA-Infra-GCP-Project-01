@@ -26,6 +26,7 @@ env:
   TF_VAR_budget_amount: 250
   TF_VAR_budget_currency_code: BRL
   TF_VAR_enable_budget_alert: true
+  TF_VAR_grafana_stack_mode: distributed
 
 jobs:
   destroy:
