@@ -40,13 +40,13 @@ resource "google_service_account" "grafana_storage" {
 
 resource "google_storage_bucket_iam_member" "loki_storage" {
   bucket = google_storage_bucket.loki_chunks.name
-  role   = "roles/storage.objectAdmin"
+  role   = "roles/storage.admin"
   member = "serviceAccount:${google_service_account.grafana_storage.email}"
 }
 
 resource "google_storage_bucket_iam_member" "tempo_storage" {
   bucket = google_storage_bucket.tempo_traces.name
-  role   = "roles/storage.objectAdmin"
+  role   = "roles/storage.admin"
   member = "serviceAccount:${google_service_account.grafana_storage.email}"
 }
 
