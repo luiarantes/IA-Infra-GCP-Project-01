@@ -70,7 +70,7 @@ variable "grafana_stack_mode" {
 variable "enable_gpu_pool" {
   description = "Habilita o node pool dedicado com GPU Spot para inferência privada dos agentes AIOps (Requer upgrade de billing na GCP para desbloquear GPUs)"
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "gpu_type" {

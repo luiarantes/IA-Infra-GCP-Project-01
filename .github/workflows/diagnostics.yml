@@ -77,7 +77,7 @@ jobs:
 
           echo ""
           echo "--- 3. STATUS DO ORÇAMENTO NA CLOUD BILLING API ---"
-          gcloud billing budgets list --billing-account=${{ secrets.GCP_BILLING_ACCOUNT_ID }} --format="table(displayName,amount.specifiedAmount.units,amount.specifiedAmount.currencyCode,thresholdRules[].thresholdPercent)" 2>/dev/null || true
+          gcloud billing budgets list --billing-account=${{ secrets.GCP_BILLING_ACCOUNT_ID }} --format="yaml" 2>/dev/null || true
           echo "========================================================="
 
       - name: Inspecionar Node Pools e Quotas de GPU
