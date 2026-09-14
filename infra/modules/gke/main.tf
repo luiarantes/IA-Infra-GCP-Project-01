@@ -71,3 +71,59 @@ resource "google_container_node_pool" "spot_nodes" {
     tags = ["gke-node", "aiops-node"]
   }
 }
+
+# Node pool dedicado para inferência privada de agentes AIOps:
+# - Instâncias SPOT n1-standard-4 (4 vCPU, 15GB RAM) com GPU NVIDIA Tesla T4 (16GB VRAM)
+# - Custo Spot GPU + VM: ~US$ 0,155/h (~R$ 0,88/h)
+# - Driver da NVIDIA instalado automaticamente pelo GKE (gpu_driver_version = "DEFAULT")
+# - Taint dedicado para isolar a GPU e impedir que pods comuns ocupem o nó
+resource "google_container_node_pool" "gpu_spot_nodes" {
+  count      = var.enable_gpu_pool ? 1 : 0
+  name       = "gpu-spot-pool"
+  project    = var.project_id
+  location   = var.zone
+  cluster    = google_container_cluster.primary.name
+  node_count = var.gpu_node_count
+
+  autoscaling {
+    min_node_count = var.gpu_min_node_count
+    max_node_count = var.gpu_max_node_count
+  }
+
+  management {
+    auto_repair  = true
+    auto_upgrade = true
+  }
+
+  node_config {
+    spot         = true
+    machine_type = var.gpu_machine_type
+    disk_size_gb = 50
+    disk_type    = "pd-balanced"
+
+    guest_accelerator {
+      type  = var.gpu_type
+      count = 1
+      gpu_driver_installation_config {
+        gpu_driver_version = "DEFAULT"
+      }
+    }
+
+    oauth_scopes = [
+      "https://www.googleapis.com/auth/cloud-platform",
+    ]
+
+    labels = {
+      environment                = "gcp-gke-gpu"
+      "cloud.google.com/gke-gpu" = "true"
+    }
+
+    taint {
+      key    = "dedicated"
+      value  = "aiops-gpu"
+      effect = "NO_SCHEDULE"
+    }
+
+    tags = ["gke-node", "aiops-gpu-node"]
+  }
+}

@@ -66,3 +66,21 @@ variable "grafana_stack_mode" {
     error_message = "O valor de grafana_stack_mode deve ser 'simple' ou 'distributed'."
   }
 }
+
+variable "enable_gpu_pool" {
+  description = "Habilita o node pool dedicado com GPU Spot para inferência privada dos agentes AIOps"
+  type        = bool
+  default     = true
+}
+
+variable "gpu_type" {
+  description = "Tipo de acelerador GPU a ser alocado (padrão: nvidia-tesla-t4)"
+  type        = string
+  default     = "nvidia-tesla-t4"
+}
+
+variable "gpu_machine_type" {
+  description = "Tipo de máquina para o nó de GPU (padrão: n1-standard-4)"
+  type        = string
+  default     = "n1-standard-4"
+}

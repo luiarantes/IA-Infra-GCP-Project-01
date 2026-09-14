@@ -44,6 +44,9 @@ module "gke" {
   min_node_count       = var.grafana_stack_mode == "distributed" ? 2 : 1
   max_node_count       = var.grafana_stack_mode == "distributed" ? 4 : 2
   machine_type         = var.grafana_stack_mode == "distributed" ? "e2-standard-4" : "e2-standard-2"
+  enable_gpu_pool      = var.enable_gpu_pool
+  gpu_type             = var.gpu_type
+  gpu_machine_type     = var.gpu_machine_type
 }
 
 module "artifact_registry" {

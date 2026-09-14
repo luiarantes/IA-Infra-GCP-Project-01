@@ -24,6 +24,7 @@ OLLAMA_MODEL = os.getenv("AIOPS_OLLAMA_MODEL", "qwen2.5-coder:7b")
 PROMETHEUS_URL = os.getenv("AIOPS_PROMETHEUS_URL", "http://localhost:5080/api/default/prometheus")
 LOKI_URL = os.getenv("AIOPS_LOKI_URL", "http://localhost:3100")
 LOCAL_TRACKER = os.getenv("AIOPS_LOCAL_TRACKER", "github")
+AIOPS_ENV = os.getenv("AIOPS_ENV", "gcp")
 WORKSPACE_DIR = os.getenv("AIOPS_WORKSPACE_DIR", os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 
@@ -149,7 +150,7 @@ class ToolRegistry:
     @staticmethod
     def create_issue(title: str, body: str, labels: List[str]) -> str:
         """Cria uma GitHub Issue (ou salva em agents/findings/ se modo file/offline)."""
-        if "env:local" not in labels:
+        if AIOPS_ENV == "local" and "env:local" not in labels:
             labels.append("env:local")
         if LOCAL_TRACKER == "file":
             return ToolRegistry.create_issue_local_fallback(title, body, labels, "Modo file configurado")
@@ -177,7 +178,7 @@ class ToolRegistry:
     @staticmethod
     def create_git_pr(branch_name: str, commit_msg: str, pr_title: str, pr_body: str, labels: List[str]) -> str:
         """Cria uma branch git, commita o arquivo corrigido e abre PR."""
-        if "env:local" not in labels:
+        if AIOPS_ENV == "local" and "env:local" not in labels:
             labels.append("env:local")
         try:
             subprocess.run(["git", "checkout", "-B", branch_name], cwd=WORKSPACE_DIR, check=True, capture_output=True)

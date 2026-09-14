@@ -83,3 +83,24 @@ O motor de execução dos agentes (`agents/engine/agent_runner.py`) consome as s
 | `AIOPS_OLLAMA_HOST` | URL HTTP | `http://localhost:11434` | Endpoint do servidor Ollama local |
 | `AIOPS_OLLAMA_MODEL` | Nome do modelo registrado | `qwen2.5-coder:7b` | Modelo carregado para o raciocínio |
 | `AIOPS_LOCAL_TRACKER` | `github`, `file` | `github` | Destino das issues (`gh` ou arquivo local) |
+| `AIOPS_ENV` | `gcp`, `local` | `gcp` | Contexto de execução (GCP ou Kind local) |
+
+---
+
+## 6. Inferência Privada no GCP com GPU Dedicada (NVIDIA Tesla T4 Spot)
+
+No ambiente de nuvem do GCP, a plataforma supera as limitações de virtualização de GPU do Docker Desktop/Kind através de um pool de nós dedicado com GPU no GKE:
+
+- **Hardware**: Instâncias Spot `n1-standard-4` equipadas com 1x **NVIDIA Tesla T4 (16 GB GDDR6 VRAM)**.
+- **Custo FinOps**: **~US$ 0,155 / hora ($\approx$ R$ 0,88 / hora)** na zona `us-central1-a`.
+- **Zero Data Egress / Air-Gapped**: O tráfego de inferência nunca deixa o cluster (`http://ollama.default.svc.cluster.local:11434`). Nenhuma métrica, log ou trecho de código é enviado para APIs externas (Anthropic/OpenAI).
+- **Desempenho**: Com 16 GB de VRAM, 100% dos pesos do `qwen2.5-coder:7b` ou `deepseek-r1:8b` residem diretamente na memória de vídeo, alcançando de 40 a 60 tokens/segundo.
+
+---
+
+## 7. Seletor Dual-Engine (Ollama GPU vs Claude Code)
+
+As pipelines do GitHub Actions (`agent-log-analyzer.yml` e `agent-pr-creator.yml`) operam com um seletor unificado:
+
+- **`ollama-gpu` (DEFAULT)**: Aciona o motor nativo e privado `agent_runner.py` contra o Ollama com aceleração de GPU dentro do GKE. Zero custo de API externa e zero exportação de dados.
+- **`claude` (Desativado por Padrão)**: Permanece implementado na arquitetura para paridade e avaliação comparativa, mas **só é executado mediante escolha explícita de um operador humano** no `workflow_dispatch` ou adição manual da label `ai:claude`.
