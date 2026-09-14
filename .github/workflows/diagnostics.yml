@@ -6,9 +6,10 @@ on:
       action:
         description: "Ação a executar"
         required: true
-        default: "inspect"
+        default: "check_cost"
         type: choice
         options:
+          - "check_cost"
           - "inspect"
           - "cleanup_gpu_pool"
 
@@ -34,8 +35,53 @@ jobs:
           location: us-central1-a
           project_id: ${{ secrets.GCP_PROJECT_ID }}
 
+      - name: Consultar Custo Atual do GCP (FinOps)
+        if: github.event.inputs.action == 'check_cost' || github.event.inputs.action == ''
+        run: |
+          echo "========================================================="
+          echo "      CONSULTA DE CUSTOS EM TEMPO REAL — GCP FINOPS      "
+          echo "========================================================="
+
+          echo "--- 1. NOTIFICAÇÕES DE ORÇAMENTO (PUB/SUB) ---"
+          MESSAGES=$(gcloud pubsub subscriptions pull budget-alerts-failsafe-pull --limit=10 --format=json 2>/dev/null || true)
+          if [ -n "$MESSAGES" ] && [ "$MESSAGES" != "[]" ]; then
+            echo "$MESSAGES" | jq -r '
+              .[]?.message.data
+              | @base64d | fromjson
+              | "💰 Gasto Atual: R$ \(.costAmount // 0) / Teto: R$ \(.budgetAmount // 250) (Proporção: \(((.costAmount // 0) / (.budgetAmount // 250) * 100) | round)%) - Período a partir de: \(.costIntervalStart)"
+            '
+          else
+            echo "ℹ️ Nenhuma nova notificação na fila do Pub/Sub no momento."
+          fi
+
+          echo ""
+          echo "--- 2. EXPORTAÇÃO DE FATURAMENTO NO BIGQUERY ---"
+          TABLES=$(bq ls --project_id=${{ secrets.GCP_PROJECT_ID }} billing_export 2>/dev/null || true)
+          echo "$TABLES"
+          if echo "$TABLES" | grep -q "gcp_billing_export"; then
+            TABLE_NAME=$(echo "$TABLES" | grep "gcp_billing_export" | awk '{print $1}' | head -1)
+            echo "📊 Executando agregação por serviço na tabela BigQuery: $TABLE_NAME..."
+            bq query --use_legacy_sql=false --format=pretty "
+              SELECT
+                service.description as servico,
+                ROUND(SUM(cost), 2) as custo_brl
+              FROM \`${{ secrets.GCP_PROJECT_ID }}.billing_export.${TABLE_NAME}\`
+              WHERE _PARTITIONDATE >= DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY)
+              GROUP BY 1
+              ORDER BY custo_brl DESC
+              LIMIT 10;
+            "
+          else
+            echo "ℹ️ Dataset billing_export ativo. O link de exportação do BigQuery ainda não foi configurado na console de faturamento."
+          fi
+
+          echo ""
+          echo "--- 3. STATUS DO ORÇAMENTO NA CLOUD BILLING API ---"
+          gcloud billing budgets list --billing-account=${{ secrets.GCP_BILLING_ACCOUNT_ID }} --format="table(displayName,amount.specifiedAmount.units,amount.specifiedAmount.currencyCode,thresholdRules[].thresholdPercent)" 2>/dev/null || true
+          echo "========================================================="
+
       - name: Inspecionar Node Pools e Quotas de GPU
-        if: github.event.inputs.action == 'inspect' || github.event.inputs.action == ''
+        if: github.event.inputs.action == 'inspect'
         run: |
           echo "=== NODE POOLS LIST ==="
           gcloud container node-pools list --cluster aiops-gke --zone us-central1-a
