@@ -92,6 +92,9 @@ jobs:
           echo "=== GKE RECENT OPERATIONS ==="
           gcloud container operations list --filter="targetLink:clusters/aiops-gke" --sort-by=~startTime --limit=5 --format="yaml(name,operationType,status,statusMessage,detail)"
 
+          echo "=== GLOBAL GPU QUOTAS (GPUS_ALL_REGIONS) ==="
+          gcloud compute project-info describe --project ${{ secrets.GCP_PROJECT_ID }} --format="yaml(quotas)" | grep -B 1 -A 3 -i "gpu" || true
+
           echo "=== GPU QUOTAS IN US-CENTRAL1 ==="
           gcloud compute regions describe us-central1 --format="yaml(quotas)" | grep -B 1 -A 3 -i "gpu" || true
 
