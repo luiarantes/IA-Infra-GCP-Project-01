@@ -9,7 +9,7 @@ APPS_DIR = (INFRA_DIR.parent.parent / "Apps" / "IA-App-GCP-Project-01").resolve(
 
 
 def apply_yaml(content: str):
-    subprocess.run(["kubectl", "apply", "-f", "-"], input=content.encode("utf-8"), check=True)
+    subprocess.run(["kubectl", "apply", "--server-side", "--force-conflicts", "-f", "-"], input=content.encode("utf-8"), check=True)
 
 
 def main():
@@ -30,10 +30,6 @@ def main():
         content = f.read().replace("${IMAGE}", "gateway:local").replace("${PROJECT_ID}", "aiops-local")
         env_extra = f"""            - name: OTEL_EXPORTER_OTLP_ENDPOINT
               value: "http://otel-collector:4318/v1/traces"
-            - name: OTEL_EXPORTER_OTLP_LOGS_ENDPOINT
-              value: "http://otel-collector:4318/v1/logs"
-            - name: PYROSCOPE_SERVER_ADDRESS
-              value: "http://pyroscope:4040"
 """
         content = content.replace("          env:\n", "          env:\n" + env_extra)
         apply_yaml(content)
@@ -49,10 +45,6 @@ def main():
               value: "pubsub-emulator:8085"
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
               value: "http://otel-collector:4318/v1/traces"
-            - name: OTEL_EXPORTER_OTLP_LOGS_ENDPOINT
-              value: "http://otel-collector:4318/v1/logs"
-            - name: PYROSCOPE_SERVER_ADDRESS
-              value: "http://pyroscope:4040"
 """
         content = content.replace("          env:\n", "          env:\n" + env_extra)
         apply_yaml(content)
@@ -66,10 +58,6 @@ def main():
         content = f.read().replace("${IMAGE}", "service-downstream:local").replace("${PROJECT_ID}", "aiops-local")
         env_extra = f"""            - name: OTEL_EXPORTER_OTLP_ENDPOINT
               value: "http://otel-collector:4318/v1/traces"
-            - name: OTEL_EXPORTER_OTLP_LOGS_ENDPOINT
-              value: "http://otel-collector:4318/v1/logs"
-            - name: PYROSCOPE_SERVER_ADDRESS
-              value: "http://pyroscope:4040"
 """
         content = content.replace("          env:\n", "          env:\n" + env_extra)
         apply_yaml(content)
@@ -85,10 +73,6 @@ def main():
               value: "pubsub-emulator:8085"
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
               value: "http://otel-collector:4318/v1/traces"
-            - name: OTEL_EXPORTER_OTLP_LOGS_ENDPOINT
-              value: "http://otel-collector:4318/v1/logs"
-            - name: PYROSCOPE_SERVER_ADDRESS
-              value: "http://pyroscope:4040"
 """
         content = content.replace("          env:\n", "          env:\n" + env_extra)
         apply_yaml(content)
@@ -106,12 +90,6 @@ def main():
             content = f.read().replace("IMAGE_PLACEHOLDER", "buscacep:local")
             env_extra = """            - name: PUBSUB_EMULATOR_HOST
               value: "pubsub-emulator:8085"
-            - name: OTEL_EXPORTER_OTLP_ENDPOINT
-              value: "http://otel-collector:4318/v1/traces"
-            - name: OTEL_EXPORTER_OTLP_LOGS_ENDPOINT
-              value: "http://otel-collector:4318/v1/logs"
-            - name: PYROSCOPE_SERVER_ADDRESS
-              value: "http://pyroscope:4040"
 """
             content = content.replace("          env:\n", "          env:\n" + env_extra)
             apply_yaml(content)
@@ -119,12 +97,6 @@ def main():
             content = f.read().replace("IMAGE_PLACEHOLDER", "buscacep:local")
             env_extra = """            - name: PUBSUB_EMULATOR_HOST
               value: "pubsub-emulator:8085"
-            - name: OTEL_EXPORTER_OTLP_ENDPOINT
-              value: "http://otel-collector:4318/v1/traces"
-            - name: OTEL_EXPORTER_OTLP_LOGS_ENDPOINT
-              value: "http://otel-collector:4318/v1/logs"
-            - name: PYROSCOPE_SERVER_ADDRESS
-              value: "http://pyroscope:4040"
 """
             content = content.replace("          env:\n", "          env:\n" + env_extra)
             apply_yaml(content)

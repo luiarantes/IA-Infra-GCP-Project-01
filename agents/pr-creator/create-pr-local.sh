@@ -34,11 +34,16 @@ if [ -z "$ISSUE_NUM" ]; then
 fi
 
 echo "📋 Atuando sobre a Issue #${ISSUE_NUM}..."
+ISSUE_CONTENT=$(gh issue view "$ISSUE_NUM" 2>/dev/null || cat "${WORKSPACE_DIR}/agents/findings/issue-${ISSUE_NUM}.md" 2>/dev/null || echo "Issue #${ISSUE_NUM}")
+
 echo "🤖 Acionando o modelo de IA para analisar o código e gerar a proposta de correção..."
 
 python3 "${WORKSPACE_DIR}/agents/engine/agent_runner.py" \
     --role "pr-creator" \
     --task-file "${WORKSPACE_DIR}/agents/pr-creator/TASK.md" \
-    --context "Avalie o diagnóstico da Issue #${ISSUE_NUM} e proponha a correção de código/manifest mínima necessária."
+    --context "Diagnóstico reportado na Issue #${ISSUE_NUM}:
+${ISSUE_CONTENT}
+
+Analise os manifestos em apps/ com 'read_file', aplique a correção cirúrgica com 'apply_patch' e crie o Pull Request com 'create_git_pr' (branch: agent-fix/issue-${ISSUE_NUM})."
 
 echo "========================================================="

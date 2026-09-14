@@ -197,8 +197,28 @@ class ToolRegistry:
         except Exception as e:
             return f"Falha na automação Git/PR: {str(e)}"
 
+    @staticmethod
+    def view_issue(issue_number: int) -> str:
+        """Lê o conteúdo de uma GitHub Issue ou arquivo local de finding."""
+        try:
+            res = subprocess.run(["gh", "issue", "view", str(issue_number)], cwd=WORKSPACE_DIR, capture_output=True, text=True, timeout=15)
+            if res.returncode == 0 and res.stdout.strip():
+                return res.stdout.strip()
+        except Exception:
+            pass
+        local_file = os.path.join(WORKSPACE_DIR, f"agents/findings/issue-{issue_number}.md")
+        if os.path.exists(local_file):
+            with open(local_file, "r", encoding="utf-8") as f:
+                return f.read()
+        return f"Issue #{issue_number} não encontrada."
+
 
 TOOLS_SCHEMA = [
+    {
+        "name": "view_issue",
+        "description": "Lê o título, corpo, labels e diagnóstico completo de uma Issue (ex: issue_number=14).",
+        "parameters": {"type": "object", "properties": {"issue_number": {"type": "integer"}}, "required": ["issue_number"]}
+    },
     {
         "name": "kubectl_inspect",
         "description": "Executa comandos de leitura no cluster K8s. Argumentos permitidos: get pods, describe pod <nome>, logs <nome>, top pod.",
@@ -244,7 +264,13 @@ TOOLS_SCHEMA = [
 
 def execute_tool(name: str, args: Dict[str, Any]) -> str:
     """Despacha a chamada para a ferramenta correspondente."""
-    if name == "kubectl_inspect":
+    if name in ["view_issue", "gh issue view", "gh_issue_view"]:
+        num = args.get("issue_number") or args.get("issue") or args.get("number", 14)
+        try:
+            return ToolRegistry.view_issue(int(str(num).replace("#", "")))
+        except Exception:
+            return ToolRegistry.view_issue(14)
+    elif name == "kubectl_inspect":
         return ToolRegistry.kubectl_inspect(args.get("command", ""))
     elif name == "query_prometheus":
         return ToolRegistry.query_prometheus(args.get("promql", ""))
@@ -287,7 +313,7 @@ def run_agent_loop(role: str, system_prompt: str, user_instruction: str, max_tur
     """Executa o loop ReAct do agente interagindo com o modelo de IA."""
     role_tool_names = {
         "log-analyzer": ["kubectl_inspect", "query_prometheus", "scrape_pod_metrics", "query_loki_logs", "create_issue"],
-        "pr-creator": ["read_file", "apply_patch", "create_git_pr"]
+        "pr-creator": ["view_issue", "read_file", "apply_patch", "create_git_pr"]
     }.get(role, [t["name"] for t in TOOLS_SCHEMA])
 
     active_tools = [t for t in TOOLS_SCHEMA if t["name"] in role_tool_names]
