@@ -59,7 +59,7 @@ if [ -z "$UNHEALTHY_PODS" ]; then
             PR_NUM=$(gh pr list --head "$FIX_BRANCH" --json number --jq '.[0].number' 2>/dev/null || echo "")
             if [ -n "$PR_NUM" ]; then
                 echo "🔀 Realizando merge do Pull Request #${PR_NUM}..."
-                gh pr merge "$PR_NUM" --squash --delete-branch --subject "Merge PR #${PR_NUM}: auto-healing fix for Issue #${ISSUE_NUM}" || true
+                gh pr merge "$PR_NUM" --squash --delete-branch --subject "Merge PR #${PR_NUM}: auto-healing fix for Issue #${ISSUE_NUM} [skip ci]" || true
             fi
         fi
         

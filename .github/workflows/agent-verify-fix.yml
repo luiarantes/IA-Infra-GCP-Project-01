@@ -31,7 +31,7 @@ env:
 
 jobs:
   verify:
-    if: github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'agent-fix')
+    if: github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'agent-fix') && !contains(github.event.pull_request.labels.*.name, 'env:local')
     runs-on: ubuntu-latest
     steps:
       - id: auth

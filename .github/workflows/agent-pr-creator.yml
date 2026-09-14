@@ -19,7 +19,7 @@ permissions:
 
 jobs:
   propose-fix:
-    if: contains(github.event.issue.labels.*.name, 'agent-finding')
+    if: contains(github.event.issue.labels.*.name, 'agent-finding') && !contains(github.event.issue.labels.*.name, 'env:local')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

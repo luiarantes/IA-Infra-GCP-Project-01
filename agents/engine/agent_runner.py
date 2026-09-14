@@ -149,6 +149,8 @@ class ToolRegistry:
     @staticmethod
     def create_issue(title: str, body: str, labels: List[str]) -> str:
         """Cria uma GitHub Issue (ou salva em agents/findings/ se modo file/offline)."""
+        if "env:local" not in labels:
+            labels.append("env:local")
         if LOCAL_TRACKER == "file":
             return ToolRegistry.create_issue_local_fallback(title, body, labels, "Modo file configurado")
         try:
@@ -175,10 +177,12 @@ class ToolRegistry:
     @staticmethod
     def create_git_pr(branch_name: str, commit_msg: str, pr_title: str, pr_body: str, labels: List[str]) -> str:
         """Cria uma branch git, commita o arquivo corrigido e abre PR."""
+        if "env:local" not in labels:
+            labels.append("env:local")
         try:
             subprocess.run(["git", "checkout", "-b", branch_name], cwd=WORKSPACE_DIR, check=True, capture_output=True)
             subprocess.run(["git", "add", "apps/", "observability/"], cwd=WORKSPACE_DIR, check=True, capture_output=True)
-            subprocess.run(["git", "commit", "-m", commit_msg], cwd=WORKSPACE_DIR, check=True, capture_output=True)
+            subprocess.run(["git", "commit", "-m", f"{commit_msg} [skip ci]"], cwd=WORKSPACE_DIR, check=True, capture_output=True)
             
             if LOCAL_TRACKER == "file":
                 return f"Branch {branch_name} criada e commitada com sucesso no Git local (modo offline ativo)."
