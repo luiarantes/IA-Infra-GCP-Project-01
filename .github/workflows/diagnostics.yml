@@ -2,6 +2,15 @@ name: Diagnostics
 
 on:
   workflow_dispatch:
+    inputs:
+      action:
+        description: "Ação a executar"
+        required: true
+        default: "inspect"
+        type: choice
+        options:
+          - "inspect"
+          - "cleanup_gpu_pool"
 
 permissions:
   contents: read
@@ -26,6 +35,7 @@ jobs:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
 
       - name: Inspecionar Node Pools e Quotas de GPU
+        if: github.event.inputs.action == 'inspect' || github.event.inputs.action == ''
         run: |
           echo "=== NODE POOLS LIST ==="
           gcloud container node-pools list --cluster aiops-gke --zone us-central1-a
@@ -38,3 +48,10 @@ jobs:
 
           echo "=== GPU QUOTAS IN US-CENTRAL1 ==="
           gcloud compute regions describe us-central1 --format="yaml(quotas)" | grep -B 1 -A 3 -i "gpu" || true
+
+      - name: Cleanup GPU Spot Pool (se selecionado)
+        if: github.event.inputs.action == 'cleanup_gpu_pool'
+        run: |
+          echo "🧹 Excluindo gpu-spot-pool com erro no cluster..."
+          gcloud container node-pools delete gpu-spot-pool --cluster aiops-gke --zone us-central1-a --quiet || true
+          echo "✅ gpu-spot-pool removido do cluster GKE com sucesso."

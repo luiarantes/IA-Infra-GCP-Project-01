@@ -67,10 +67,11 @@ jobs:
           kubectl apply -f observability/otel-collector.yaml
 
           if kubectl get nodes -l cloud.google.com/gke-gpu=true --no-headers 2>/dev/null | grep -q .; then
-            echo "🚀 Nó com GPU NVIDIA detectado no cluster! Aplicando Ollama GPU..."
+            echo "🚀 Nó com GPU NVIDIA detectado! Aplicando Ollama com aceleração de GPU..."
             kubectl apply -f observability/ollama-gpu.yaml
           else
-            echo "ℹ️ Nenhum nó com label cloud.google.com/gke-gpu=true detectado. Deploy do Ollama ignorado."
+            echo "📦 Nó de GPU não detectado. Aplicando Ollama em modo padrão no cluster para inferência privada..."
+            kubectl apply -f observability/ollama.yaml
           fi
 
       - name: Aguardar Rollout dos Serviços de Observabilidade

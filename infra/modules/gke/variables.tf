@@ -47,9 +47,9 @@ variable "max_node_count" {
 }
 
 variable "enable_gpu_pool" {
-  description = "Habilita o node pool dedicado com GPU Spot para inferência privada dos agentes AIOps"
+  description = "Habilita o node pool dedicado com GPU Spot para inferência privada dos agentes AIOps (Requer upgrade de billing na GCP para desbloquear GPUs)"
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "gpu_type" {

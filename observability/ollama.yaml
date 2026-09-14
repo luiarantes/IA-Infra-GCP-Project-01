@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ollama
+  namespace: default
+  labels:
+    app: ollama
+    component: aiops-inference
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ollama
+  template:
+    metadata:
+      labels:
+        app: ollama
+        component: aiops-inference
+    spec:
+      containers:
+        - name: ollama
+          image: ollama/ollama:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: OLLAMA_HOST
+              value: "0.0.0.0"
+            - name: OLLAMA_ORIGINS
+              value: "*"
+            - name: OLLAMA_MODELS
+              value: "/root/.ollama/models"
+          ports:
+            - containerPort: 11434
+              name: http
+          resources:
+            requests:
+              cpu: "1"
+              memory: "2Gi"
+            limits:
+              cpu: "2"
+              memory: "6Gi"
+          lifecycle:
+            postStart:
+              exec:
+                command:
+                  - "/bin/sh"
+                  - "-c"
+                  - "sleep 5 && ollama pull qwen2.5-coder:7b > /tmp/pull.log 2>&1 &"
+          volumeMounts:
+            - name: ollama-data
+              mountPath: /root/.ollama
+      volumes:
+        - name: ollama-data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ollama
+  namespace: default
+  labels:
+    app: ollama
+    component: aiops-inference
+spec:
+  type: ClusterIP
+  selector:
+    app: ollama
+  ports:
+    - port: 11434
+      targetPort: 11434
+      name: http
