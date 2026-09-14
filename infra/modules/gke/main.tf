@@ -29,6 +29,12 @@ resource "google_container_cluster" "primary" {
 
   # Precisa ser false para permitir `terraform destroy` sem passo manual
   deletion_protection = false
+
+  timeouts {
+    create = "60m"
+    update = "40m"
+    delete = "40m"
+  }
 }
 
 resource "google_container_node_pool" "spot_nodes" {
