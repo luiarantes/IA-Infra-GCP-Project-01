@@ -19,6 +19,9 @@ A issue #${ISSUE_NUMBER} foi aberta por um agente de observabilidade
      ou `resources.requests`/`limits` no `deployment.yaml` do app
      relevante (dentro de `apps/<nome-do-app>/`), ajustar o
      `PodMonitoring` em `observability/`.
+   - Para incidentes de `OOMKilled` em microsserviços Python com OpenTelemetry e Pyroscope,
+     os recursos mínimos seguros recomendados são `requests.memory: 128Mi` e `limits.memory: 256Mi`.
+     Substitua o bloco `resources:` existente por completo (não adicione duplicados).
    - Se a causa raiz for um teste deliberado (ex: alguém chamou
      manualmente um endpoint de simulação de falha, tipo `/panic`) e não
      há nada de fato quebrado no código, **não existe fix a propor**.

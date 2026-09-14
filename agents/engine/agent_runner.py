@@ -180,14 +180,14 @@ class ToolRegistry:
         if "env:local" not in labels:
             labels.append("env:local")
         try:
-            subprocess.run(["git", "checkout", "-b", branch_name], cwd=WORKSPACE_DIR, check=True, capture_output=True)
+            subprocess.run(["git", "checkout", "-B", branch_name], cwd=WORKSPACE_DIR, check=True, capture_output=True)
             subprocess.run(["git", "add", "apps/", "observability/"], cwd=WORKSPACE_DIR, check=True, capture_output=True)
             subprocess.run(["git", "commit", "-m", f"{commit_msg} [skip ci]"], cwd=WORKSPACE_DIR, check=True, capture_output=True)
             
             if LOCAL_TRACKER == "file":
                 return f"Branch {branch_name} criada e commitada com sucesso no Git local (modo offline ativo)."
 
-            push_res = subprocess.run(["git", "push", "-u", "origin", branch_name], cwd=WORKSPACE_DIR, capture_output=True, text=True)
+            push_res = subprocess.run(["git", "push", "-u", "origin", branch_name, "--force"], cwd=WORKSPACE_DIR, capture_output=True, text=True)
             if push_res.returncode != 0:
                 return f"Branch {branch_name} commitada localmente. Push remoto indisponível: {push_res.stderr.strip()}"
 
@@ -196,6 +196,8 @@ class ToolRegistry:
                 pr_cmd.extend(["--label", l])
             pr_res = subprocess.run(pr_cmd, cwd=WORKSPACE_DIR, capture_output=True, text=True)
             if pr_res.returncode != 0:
+                if "already exists" in pr_res.stderr.lower():
+                    return f"Branch atualizada e commit enviado para o PR existente ({branch_name})."
                 return f"Branch enviada. PR via gh retornou: {pr_res.stderr.strip()}"
             return f"Pull Request criado com sucesso: {pr_res.stdout.strip()}"
         except Exception as e:
