@@ -33,7 +33,10 @@ case "$SCENARIO" in
 
     oom-kill)
         echo "💥 Cenário: Injetando limite de memória insuficiente em 'service-api'..."
-        echo "Reduzindo limit de memória para 16Mi (causa OOMKilled no startup do Python)..."
+        echo "Reduzindo limit de memória para 16Mi no manifest e no cluster (causa OOMKilled no startup do Python)..."
+        
+        sed -i '' 's/memory: 256Mi/memory: 16Mi/g' "${WORKSPACE_DIR}/apps/service-api/deployment.yaml"
+        sed -i '' 's/memory: 128Mi/memory: 16Mi/g' "${WORKSPACE_DIR}/apps/service-api/deployment.yaml"
         
         kubectl set resources deployment/service-api --limits=memory=16Mi,cpu=200m --requests=memory=16Mi,cpu=100m
         
@@ -45,7 +48,8 @@ case "$SCENARIO" in
 
     restore)
         echo "🧹 Restaurando deployment 'service-api' para a configuração original saudável..."
-        kubectl apply -f "${WORKSPACE_DIR}/apps/service-api/deployment.yaml"
+        git checkout -- "${WORKSPACE_DIR}/apps/service-api/deployment.yaml"
+        python3 "${WORKSPACE_DIR}/local/scripts/apply_local_manifests.py"
         kubectl rollout status deployment/service-api --timeout=60s
         echo "✅ 'service-api' restaurado com sucesso!"
         ;;
