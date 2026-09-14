@@ -83,6 +83,16 @@ jobs:
       - name: Inspecionar Node Pools e Quotas de GPU
         if: github.event.inputs.action == 'inspect'
         run: |
+          echo "=== K8S NODES ==="
+          kubectl get nodes -o wide
+
+          echo "=== K8S PODS ==="
+          kubectl get pods -o wide
+
+          echo "=== OLLAMA GPU LOGS / NVIDIA-SMI ==="
+          kubectl logs deployment/ollama --tail=30 || true
+          kubectl exec deployment/ollama -- nvidia-smi || true
+
           echo "=== NODE POOLS LIST ==="
           gcloud container node-pools list --cluster aiops-gke --zone us-central1-a
 
