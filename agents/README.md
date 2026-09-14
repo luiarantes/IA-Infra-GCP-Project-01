@@ -26,3 +26,12 @@ Cada agente roda isolado, com escopo de permissões restrito ao que sua
 etapa exige (least privilege também vale para autonomia de IA). Merge do
 PR sempre exige aprovação humana — os agentes nunca aplicam nada na
 infraestrutura sozinhos.
+
+## Arquitetura de Modelos e Inferência
+
+Os agentes suportam execução híbrida e agnóstica:
+- **Ambiente Local**: Inferência 100% offline e com custo zero via **Ollama** (`qwen2.5-coder:7b`, `deepseek-r1:8b`, `llama3.2:3b`).
+- **Nuvem (GCP / AWS / CI)**: Conexão via APIs padrão (Claude Code, Gemini, OpenAI).
+
+Para detalhes sobre a comparação dos modelos, consumo de hardware e fundamentação das escolhas técnicas para SRE, consulte o guia detalhado em **[MODELS.md](MODELS.md)**.
+

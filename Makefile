@@ -1,4 +1,4 @@
-.PHONY: help local-up local-up-simple local-up-distributed local-down local-status local-test local-agent local-load-test local-chaos-test local-traffic-start local-traffic-stop local-dashboards-reload obs-ui grafana-ui pyroscope-ui minio-ui gcp-up gcp-down aws-up aws-down
+.PHONY: help local-up local-up-simple local-up-distributed local-down local-status local-test local-agent local-load-test local-chaos-test local-traffic-start local-traffic-stop local-dashboards-reload obs-ui grafana-ui pyroscope-ui minio-ui local-aiops-ollama-up local-aiops-ollama-down local-aiops-chaos local-aiops-analyze local-aiops-fix local-aiops-verify local-aiops-demo gcp-up gcp-down aws-up aws-down
 
 help:
 	@echo "========================================================================="
@@ -21,6 +21,15 @@ help:
 	@echo "    make grafana-ui          - Abre a interface web do Grafana OSS no navegador"
 	@echo "    make pyroscope-ui        - Abre a interface web do Pyroscope no navegador"
 	@echo "    make minio-ui            - Abre a interface web do MinIO Console no navegador"
+	@echo ""
+	@echo "  🤖 Agentes AIOps & Self-Healing Local (Ollama + Telemetria):"
+	@echo "    make local-aiops-ollama-up   - Sobe container Docker do Ollama com modelo qwen2.5-coder:7b"
+	@echo "    make local-aiops-ollama-down - Para container Docker do Ollama"
+	@echo "    make local-aiops-chaos SCENARIO=<probe-crash|oom-kill|restore> - Injeta anomalia controlada"
+	@echo "    make local-aiops-analyze     - Executa Agente 1 (Pre-check deterministico + Diagnostico IA)"
+	@echo "    make local-aiops-fix ISSUE=N - Executa Agente 2 (Inspeciona codigo e gera PR de fix)"
+	@echo "    make local-aiops-verify ISSUE=N - Executa Agente 3 (Aplica deploy e valida resolucao)"
+	@echo "    make local-aiops-demo        - Demonstra o ciclo completo de self-healing end-to-end"
 
 	@echo ""
 	@echo "  ☁️ Ambiente Nuvem GCP (GKE Standard Zonal SPOT + Pub/Sub):"
@@ -122,6 +131,49 @@ local-dashboards-reload:
 	@echo "✅ Dashboards recarregados com sucesso no Grafana!"
 
 
+
+local-aiops-ollama-up:
+	@echo "🦙 Inicializando container do Ollama na porta 11434..."
+	@docker run -d --name ollama -p 11434:11434 -v ollama_models:/root/.ollama --restart always ollama/ollama 2>/dev/null || docker start ollama
+	@echo "⏳ Aguardando API do Ollama inicializar..."
+	@for i in {1..30}; do curl -s http://localhost:11434/api/tags >/dev/null && break || sleep 1; done
+	@echo "📦 Baixando modelo qwen2.5-coder:7b no Ollama..."
+	@docker exec -it ollama ollama pull qwen2.5-coder:7b
+	@echo "✅ Ollama operacional com qwen2.5-coder:7b pronto para inferência!"
+
+local-aiops-ollama-down:
+	@echo "🛑 Parando container do Ollama..."
+	@docker stop ollama 2>/dev/null || true
+	@docker rm ollama 2>/dev/null || true
+	@echo "✅ Container do Ollama finalizado."
+
+local-aiops-chaos:
+	@chmod +x local/scenarios/inject-failure.sh
+	@./local/scenarios/inject-failure.sh $(SCENARIO)
+
+local-aiops-analyze:
+	@chmod +x agents/log-analyzer/analyze-local.sh
+	@./agents/log-analyzer/analyze-local.sh
+
+local-aiops-fix:
+	@chmod +x agents/pr-creator/create-pr-local.sh
+	@./agents/pr-creator/create-pr-local.sh $(ISSUE)
+
+local-aiops-verify:
+	@chmod +x agents/verify-fix/verify-local.sh
+	@./agents/verify-fix/verify-local.sh $(ISSUE)
+
+local-aiops-demo:
+	@echo "🚀 Iniciando Demonstração de Self-Healing Local (Closed Loop)..."
+	@echo "1. Injetando falha de Liveness Probe..."
+	@$(MAKE) local-aiops-chaos SCENARIO=probe-crash
+	@echo "2. Acionando Agente 1 (Log & Metric Analyzer)..."
+	@$(MAKE) local-aiops-analyze
+	@echo "3. Acionando Agente 2 (PR & Fix Creator)..."
+	@$(MAKE) local-aiops-fix
+	@echo "4. Acionando Agente 3 (Verify Fix)..."
+	@$(MAKE) local-aiops-verify
+	@echo "🎉 Loop de Self-Healing concluído com sucesso!"
 
 gcp-up:
 	@echo "☁️ Disparando Terraform Apply no GCP via GitHub Actions..."
