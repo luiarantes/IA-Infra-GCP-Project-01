@@ -283,27 +283,34 @@ def call_ollama(messages: List[Dict[str, Any]]) -> Dict[str, Any]:
         raise RuntimeError(f"Não foi possível conectar ao Ollama em {OLLAMA_HOST}. Verifique se o container está rodando ('make local-aiops-ollama-up'). Detalhe: {e}")
 
 
-def run_agent_loop(system_prompt: str, user_instruction: str, max_turns: int = 10) -> str:
+def run_agent_loop(role: str, system_prompt: str, user_instruction: str, max_turns: int = 10) -> str:
     """Executa o loop ReAct do agente interagindo com o modelo de IA."""
+    role_tool_names = {
+        "log-analyzer": ["kubectl_inspect", "query_prometheus", "scrape_pod_metrics", "query_loki_logs", "create_issue"],
+        "pr-creator": ["read_file", "apply_patch", "create_git_pr"]
+    }.get(role, [t["name"] for t in TOOLS_SCHEMA])
+
+    active_tools = [t for t in TOOLS_SCHEMA if t["name"] in role_tool_names]
+
     tools_prompt = f"""
 Você tem acesso às seguintes ferramentas técnicas de infraestrutura e observabilidade:
-{json.dumps(TOOLS_SCHEMA, indent=2, ensure_ascii=False)}
+{json.dumps(active_tools, indent=2, ensure_ascii=False)}
 
-Para executar uma ferramenta técnica, responda EXATAMENTE neste formato JSON em bloco de código:
+Para executar uma ferramenta técnica, responda com um bloco JSON EXATAMENTE neste formato:
 ```json
 {{
   "tool": "nome_da_ferramenta",
   "arguments": {{ "param1": "valor" }}
 }}
 ```
-Após o retorno da ferramenta com os dados reais do cluster/código, formule a próxima etapa ou apresente sua conclusão final.
+Importante: execute primeiro as ferramentas de inspeção necessárias para diagnosticar a causa-raiz com dados reais. Ao concluir o diagnóstico, chame 'create_issue' (para log-analyzer) ou 'create_git_pr' (para pr-creator).
 """
     messages = [
         {"role": "system", "content": system_prompt + "\n\n" + tools_prompt},
         {"role": "user", "content": user_instruction}
     ]
 
-    print(f"🤖 Iniciando Agente AIOps [{OLLAMA_MODEL} via {AI_PROVIDER}]...")
+    print(f"🤖 Iniciando Agente AIOps [{role} | Modelo: {OLLAMA_MODEL} via {AI_PROVIDER}]...")
 
     for turn in range(1, max_turns + 1):
         print(f"\n--- [Turno {turn}/{max_turns}] Consultando Modelo ---")
@@ -312,16 +319,28 @@ Após o retorno da ferramenta com os dados reais do cluster/código, formule a p
         messages.append({"role": "assistant", "content": content})
         print(f"Resposta do Modelo:\n{content}\n")
 
-        # Procura chamada de ferramenta no output
+        # Procura chamada de ferramenta no output (robusto a ```json, ``` ou JSON puro)
         tool_call = None
-        if "```json" in content:
+        import re
+        json_match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", content, re.DOTALL)
+        if json_match:
             try:
-                raw_json = content.split("```json")[1].split("```")[0].strip()
-                parsed = json.loads(raw_json)
+                parsed = json.loads(json_match.group(1))
                 if "tool" in parsed:
                     tool_call = parsed
             except Exception:
                 pass
+
+        if not tool_call:
+            # Fallback para busca de objeto JSON puro contendo "tool"
+            raw_match = re.search(r'(\{\s*"tool"\s*:\s*"[^"]+".*?\})', content, re.DOTALL)
+            if raw_match:
+                try:
+                    parsed = json.loads(raw_match.group(1))
+                    if "tool" in parsed:
+                        tool_call = parsed
+                except Exception:
+                    pass
 
         if not tool_call:
             print("✅ Agente finalizou a execução.")
@@ -332,6 +351,12 @@ Após o retorno da ferramenta com os dados reais do cluster/código, formule a p
         print(f"⚡ Executando ferramenta: {tool_name} com {tool_args}")
         obs = execute_tool(tool_name, tool_args)
         print(f"📊 Observação retornada ({len(obs)} caracteres):\n{obs[:400]}...")
+
+        # Ações terminais: encerram o ciclo com sucesso
+        if tool_name in ["create_issue", "create_git_pr"]:
+            print(f"🎯 Ação terminal '{tool_name}' concluída com sucesso! Encerrando ciclo do agente.")
+            return obs
+
         messages.append({
             "role": "user",
             "content": f"Observation from {tool_name}:\n{obs}"
@@ -355,7 +380,7 @@ def main():
     system_prompt = f"Você é o Agente de AIOps ({args.role}).\n{task_content}"
     user_instruction = f"Inicie a execução da sua tarefa de forma autônoma.\nContexto informado: {args.context}"
 
-    run_agent_loop(system_prompt, user_instruction)
+    run_agent_loop(args.role, system_prompt, user_instruction)
 
 
 if __name__ == "__main__":

@@ -138,7 +138,7 @@ local-aiops-ollama-up:
 	@echo "⏳ Aguardando API do Ollama inicializar..."
 	@for i in {1..30}; do curl -s http://localhost:11434/api/tags >/dev/null && break || sleep 1; done
 	@echo "📦 Baixando modelo qwen2.5-coder:7b no Ollama..."
-	@docker exec -it ollama ollama pull qwen2.5-coder:7b
+	@docker exec ollama ollama pull qwen2.5-coder:7b
 	@echo "✅ Ollama operacional com qwen2.5-coder:7b pronto para inferência!"
 
 local-aiops-ollama-down:

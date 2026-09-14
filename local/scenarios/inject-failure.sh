@@ -23,7 +23,7 @@ case "$SCENARIO" in
         echo "Alterando liveness probe para path inexistente '/healthz-invalid' na porta 8000..."
         
         # Patch direto no deployment em execução
-        kubectl set probe deployment/service-api --liveness --get-url=http://:8000/healthz-invalid --initial-delay-seconds=5 --period-seconds=5
+        kubectl patch deployment service-api --type='json' -p='[{"op": "replace", "path": "/spec/template/spec/containers/0/livenessProbe/httpGet/path", "value": "/healthz-invalid"},{"op": "replace", "path": "/spec/template/spec/containers/0/livenessProbe/periodSeconds", "value": 5}]'
         
         echo "⏳ Aguardando Kubelet detectar falha de probe e reiniciar container..."
         sleep 20
