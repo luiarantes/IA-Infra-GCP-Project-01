@@ -1,0 +1,40 @@
+name: Diagnostics
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: aiops-gke
+          location: us-central1-a
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Inspecionar Node Pools e Quotas de GPU
+        run: |
+          echo "=== NODE POOLS LIST ==="
+          gcloud container node-pools list --cluster aiops-gke --zone us-central1-a
+
+          echo "=== GPU SPOT POOL STATUS ==="
+          gcloud container node-pools describe gpu-spot-pool --cluster aiops-gke --zone us-central1-a --format="yaml(status,statusMessage,conditions)" || true
+
+          echo "=== GKE RECENT OPERATIONS ==="
+          gcloud container operations list --filter="targetLink:clusters/aiops-gke" --sort-by=~startTime --limit=5 --format="yaml(name,operationType,status,statusMessage,detail)"
+
+          echo "=== GPU QUOTAS IN US-CENTRAL1 ==="
+          gcloud compute regions describe us-central1 --format="yaml(quotas)" | grep -B 1 -A 3 -i "gpu" || true
