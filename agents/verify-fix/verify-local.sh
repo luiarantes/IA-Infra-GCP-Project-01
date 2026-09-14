@@ -26,12 +26,8 @@ echo "📦 Arquivos modificados:"
 echo "$CHANGED_FILES"
 echo "---------------------------------------------------------"
 
-if [ -z "$CHANGED_FILES" ]; then
-    echo "ℹ️ Nenhum arquivo alterado para aplicar no cluster."
-else
-    echo "🚀 Aplicando correções no cluster local (Kind)..."
-    python3 "${WORKSPACE_DIR}/local/scripts/apply_local_manifests.py"
-fi
+echo "🚀 Sincronizando manifestos no cluster local (Kind)..."
+python3 "${WORKSPACE_DIR}/local/scripts/apply_local_manifests.py"
 
 echo "⏳ Aguardando rollout dos deployments afetados..."
 for dep in $(kubectl get deployments -n default -o jsonpath='{.items[*].metadata.name}'); do
