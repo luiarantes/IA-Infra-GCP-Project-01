@@ -45,10 +45,10 @@ spec:
           resources:
             requests:
               cpu: 150m
-              memory: 16Mi
+              memory: 128Mi
             limits:
               cpu: 250m
-              memory: 16Mi
+              memory: 256Mi
           # Startup com OpenTelemetry e mais pesado que so FastAPI puro
           # - da ate 150s antes das probes normais (mais estritas)
           # passarem a valer.
@@ -72,11 +72,3 @@ spec:
             initialDelaySeconds: 5
             periodSeconds: 10
             failureThreshold: 3
-          # Ajuste adicionado para evitar OOMKilled
-          resources:
-            requests:
-              cpu: 200m
-              memory: 32Mi
-            limits:
-              cpu: 300m
-              memory: 32Mi
