@@ -44,11 +44,11 @@ spec:
           # pr-creator na issue #10 (2026-08-04).
           resources:
             requests:
-              cpu: 128Mi
-              memory: 256Mi
+              cpu: 150m
+              memory: 128Mi
             limits:
-              cpu: 200m
-              memory: 16Mi
+              cpu: 250m
+              memory: 256Mi
           # Startup com OpenTelemetry e mais pesado que so FastAPI puro
           # - da ate 150s antes das probes normais (mais estritas)
           # passarem a valer.
