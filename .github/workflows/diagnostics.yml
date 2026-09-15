@@ -14,6 +14,7 @@ on:
           - "cleanup_gpu_pool"
           - "inject_probe_crash"
           - "restore_service_api"
+          - "inject_oom_kill"
 
 permissions:
   contents: read
@@ -126,10 +127,20 @@ jobs:
           sleep 25
           kubectl get pods -l app=service-api -o wide
 
-      - name: Restaurar Liveness Probe (service-api)
+      - name: Injetar Falha OOMKilled (service-api)
+        if: github.event.inputs.action == 'inject_oom_kill'
+        run: |
+          echo "💥 Injetando limite insuficiente de memória em service-api (16Mi)..."
+          kubectl set resources deployment/service-api --limits=memory=16Mi,cpu=200m --requests=memory=16Mi,cpu=100m
+          echo "⏳ Aguardando 25s para o Kubelet/Kernel finalizar o container com OOMKilled (Exit Code 137)..."
+          sleep 25
+          kubectl get pods -l app=service-api -o wide
+
+      - name: Restaurar Liveness Probe e Recursos (service-api)
         if: github.event.inputs.action == 'restore_service_api'
         run: |
-          echo "🧹 Restaurando liveness probe original de service-api..."
-          kubectl patch deployment service-api --type='json' -p='[{"op": "replace", "path": "/spec/template/spec/containers/0/livenessProbe/httpGet/path", "value": "/healthz"},{"op": "replace", "path": "/spec/template/spec/containers/0/livenessProbe/periodSeconds", "value": 10}]'
+          echo "🧹 Restaurando service-api para configuração saudável original (128Mi/256Mi e /healthz)..."
+          kubectl patch deployment service-api --type='json' -p='[{"op": "replace", "path": "/spec/template/spec/containers/0/livenessProbe/httpGet/path", "value": "/healthz"},{"op": "replace", "path": "/spec/template/spec/containers/0/livenessProbe/periodSeconds", "value": 10}]' || true
+          kubectl set resources deployment/service-api --limits=memory=256Mi,cpu=250m --requests=memory=128Mi,cpu=150m
           kubectl rollout status deployment/service-api --timeout=60s
           echo "✅ service-api restaurado e saudável!"
