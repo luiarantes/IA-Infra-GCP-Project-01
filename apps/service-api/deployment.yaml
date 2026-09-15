@@ -44,8 +44,8 @@ spec:
           # pr-creator na issue #10 (2026-08-04).
           resources:
             requests:
-              cpu: 100m
-              memory: 16Mi
+              cpu: 128Mi
+              memory: 256Mi
             limits:
               cpu: 200m
               memory: 16Mi
