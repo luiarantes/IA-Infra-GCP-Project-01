@@ -12,6 +12,8 @@ on:
           - "check_cost"
           - "inspect"
           - "cleanup_gpu_pool"
+          - "inject_probe_crash"
+          - "restore_service_api"
 
 permissions:
   contents: read
@@ -114,3 +116,20 @@ jobs:
           echo "🧹 Excluindo gpu-spot-pool com erro no cluster..."
           gcloud container node-pools delete gpu-spot-pool --cluster aiops-gke --zone us-central1-a --quiet || true
           echo "✅ gpu-spot-pool removido do cluster GKE com sucesso."
+
+      - name: Injetar Falha de Liveness Probe (service-api)
+        if: github.event.inputs.action == 'inject_probe_crash'
+        run: |
+          echo "💥 Injetando falha de liveness probe em service-api (/healthz-invalid)..."
+          kubectl patch deployment service-api --type='json' -p='[{"op": "replace", "path": "/spec/template/spec/containers/0/livenessProbe/httpGet/path", "value": "/healthz-invalid"},{"op": "replace", "path": "/spec/template/spec/containers/0/livenessProbe/periodSeconds", "value": 5}]'
+          echo "⏳ Aguardando 25s para o Kubelet detectar a falha de probe e iniciar CrashLoop..."
+          sleep 25
+          kubectl get pods -l app=service-api -o wide
+
+      - name: Restaurar Liveness Probe (service-api)
+        if: github.event.inputs.action == 'restore_service_api'
+        run: |
+          echo "🧹 Restaurando liveness probe original de service-api..."
+          kubectl patch deployment service-api --type='json' -p='[{"op": "replace", "path": "/spec/template/spec/containers/0/livenessProbe/httpGet/path", "value": "/healthz"},{"op": "replace", "path": "/spec/template/spec/containers/0/livenessProbe/periodSeconds", "value": 10}]'
+          kubectl rollout status deployment/service-api --timeout=60s
+          echo "✅ service-api restaurado e saudável!"
