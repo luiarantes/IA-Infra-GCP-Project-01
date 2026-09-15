@@ -19,6 +19,20 @@ name: Agent - Verify Fix
 on:
   pull_request:
     types: [closed]
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: "Número da issue para verificar (se acionado manualmente)"
+        required: false
+        default: "24"
+      signal:
+        description: "Sinal a verificar (restart_count, cpu, memory, http_5xx, latency)"
+        required: false
+        default: "restart_count"
+      app:
+        description: "App a verificar (service-api, gateway, etc)"
+        required: false
+        default: "service-api"
 
 permissions:
   contents: read
@@ -31,7 +45,7 @@ env:
 
 jobs:
   verify:
-    if: github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'agent-fix') && !contains(github.event.pull_request.labels.*.name, 'env:local')
+    if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'agent-fix') && !contains(github.event.pull_request.labels.*.name, 'env:local'))
     runs-on: ubuntu-latest
     steps:
       - id: auth
@@ -43,21 +57,28 @@ jobs:
       - name: Extrair numero da issue e labels de sinal/app do PR
         id: extract
         run: |
-          BRANCH="${{ github.event.pull_request.head.ref }}"
-          ISSUE_NUMBER=$(echo "$BRANCH" | grep -oE '[0-9]+$' || true)
-          echo "issue_number=${ISSUE_NUMBER}" >> "$GITHUB_OUTPUT"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "issue_number=${{ github.event.inputs.issue_number }}" >> "$GITHUB_OUTPUT"
+            echo "signal=${{ github.event.inputs.signal }}" >> "$GITHUB_OUTPUT"
+            echo "app=${{ github.event.inputs.app }}" >> "$GITHUB_OUTPUT"
+            echo "Manual dispatch -> issue='${{ github.event.inputs.issue_number }}' signal='${{ github.event.inputs.signal }}' app='${{ github.event.inputs.app }}'"
+          else
+            BRANCH="${{ github.event.pull_request.head.ref }}"
+            ISSUE_NUMBER=$(echo "$BRANCH" | grep -oE '[0-9]+$' || true)
+            echo "issue_number=${ISSUE_NUMBER}" >> "$GITHUB_OUTPUT"
 
-          LABELS='${{ toJson(github.event.pull_request.labels.*.name) }}'
-          SIGNAL=$(echo "$LABELS" | jq -r '.[] | select(startswith("signal:")) | sub("signal:"; "")' | head -1)
-          APP=$(echo "$LABELS" | jq -r '.[] | select(startswith("app:")) | sub("app:"; "")' | head -1)
-          echo "signal=${SIGNAL}" >> "$GITHUB_OUTPUT"
-          echo "app=${APP}" >> "$GITHUB_OUTPUT"
-          echo "PR labels -> signal='${SIGNAL}' app='${APP}' (vazio = fallback pro comportamento generico)"
+            LABELS='${{ toJson(github.event.pull_request.labels.*.name) }}'
+            SIGNAL=$(echo "$LABELS" | jq -r '.[] | select(startswith("signal:")) | sub("signal:"; "")' | head -1)
+            APP=$(echo "$LABELS" | jq -r '.[] | select(startswith("app:")) | sub("app:"; "")' | head -1)
+            echo "signal=${SIGNAL}" >> "$GITHUB_OUTPUT"
+            echo "app=${APP}" >> "$GITHUB_OUTPUT"
+            echo "PR labels -> signal='${SIGNAL}' app='${APP}' (vazio = fallback pro comportamento generico)"
+          fi
 
       # Espera o deploy (disparado pelo mesmo merge) terminar de aplicar
       # a mudanca antes de checar se o problema parou.
       - name: Aguardar o deploy da correcao
-        if: steps.extract.outputs.issue_number != ''
+        if: steps.extract.outputs.issue_number != '' && github.event_name != 'workflow_dispatch'
         run: sleep 300
 
       - name: Reconsultar o sinal pos-deploy
