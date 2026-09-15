@@ -52,5 +52,16 @@ terraform apply -auto-approve
 |---|---|---|
 | **Gateway da Infra** | `http://localhost:8080` | Ponto de entrada da malha de microsserviços |
 | **BuscaCEP Web & API** | `http://localhost:8000` | Frontend web e API de consulta de CEPs |
+| **Grafana OSS** | `http://localhost:3000` | Dashboards, Tempo (traces) e Loki (logs) — Login: `admin`/`admin` |
+| **Grafana Pyroscope** | `http://localhost:4040` | Continuous profiling em tempo real |
 | **OpenObserve** | `http://localhost:5080` | UI de logs, traces e métricas (`admin@example.com` / `ComplexPassword123#`) |
 | **Pub/Sub Emulator** | `http://localhost:8085` | Emulador local do Google Cloud Pub/Sub |
+| **MinIO Console** | `http://localhost:9001` | UI do MinIO S3 (apenas no modo `distributed`) |
+
+---
+
+## ⚙️ Toggle de Modo da Stack Grafana Labs (`grafana_stack_mode`)
+
+Defina a variável no seu `terraform.tfvars` (`cp terraform.tfvars.example terraform.tfvars`):
+* `grafana_stack_mode = "simple"` (Padrão): Modo monolítico leve, armazena dados em `/tmp` no container. Recomendado para máquinas com **8 GB de RAM** alocados no Docker.
+* `grafana_stack_mode = "distributed"`: Modo enterprise desacoplado com MinIO S3 Object Storage emulando produção. Recomendado para máquinas com **12 GB+ de RAM** e 4-6 vCPUs.
