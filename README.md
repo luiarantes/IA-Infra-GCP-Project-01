@@ -145,6 +145,24 @@ make local-down
 
 Provisionado de forma efêmera via GitHub Actions com custo otimizado (~R$ 0,08/hora).
 
+#### ⚠️ Pré-requisitos Importantes da Conta GCP (Upgrade de Faturamento & Cota de GPU)
+
+Para provisionar o ambiente na nuvem com o acelerador de GPU ativo (`enable_gpu_pool = true`), são necessárias duas ações prévias no Console do Google Cloud:
+
+1. **Upgrade da Conta GCP (Sair do Modo Avaliação Gratuita Restrito)**:
+   * Por padrão, contas recém-criadas no *Free Trial* permanecem em modo "sandbox" e **bloqueiam totalmente a criação de instâncias com GPU**.
+   * Acesse o [Console do GCP](https://console.cloud.google.com/) e clique no botão **"Ativar" / "Upgrade"** no banner superior de Billing.
+   * *Fique tranquilo*: O upgrade **não consome nem cancela seus créditos gratuitos restantes** (ex: R$ 1.500 / US$ 300) — ele apenas autoriza sua conta a alocar recursos de computação especializada.
+2. **Solicitação de Aumento de Cota de GPU (`NVIDIA_T4_GPUS`)**:
+   * Novas contas começam com cota de GPU igual a **0**.
+   * Acesse **IAM & Admin** ➔ **Quotas & System Limits** no Console GCP.
+   * Filtre pelas métricas:
+     * `compute.googleapis.com/gpus_all_regions` (Cota global de GPUs)
+     * `compute.googleapis.com/nvidia_t4_gpus` (Região: `us-central1`)
+   * Selecione a cota, clique em **Edit Quota** e solicite o limite de **1**. O Google processa e aprova essa solicitação em poucos minutos.
+3. **Fallback sem GPU (100% CPU Spot)**:
+   * Caso sua solicitação de cota ainda esteja pendente de aprovação ou prefira rodar sem GPU, basta definir `enable_gpu_pool = false` em `infra/environments/test/terraform.tfvars`. O cluster funcionará perfeitamente utilizando apenas nós de CPU Spot (`e2-standard-2`/`e2-standard-4`).
+
 1. **Bootstrap inicial (uma única vez)**:
    ```bash
    cd infra/bootstrap

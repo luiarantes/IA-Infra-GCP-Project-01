@@ -22,8 +22,11 @@ enable_budget_alert   = true
 grafana_stack_mode    = "simple"
 
 # Habilita node pool dedicado com GPU Spot (NVIDIA Tesla T4) para inferência dos Agentes AIOps:
-#   - true: Cria nó n1-standard-4 com 1x Tesla T4 Spot (~80% mais veloz na análise de logs)
-#   - false: Utiliza apenas nós gerais Spot com CPU (e2-standard-2 / e2-standard-4)
+#   - true: Cria nó n1-standard-4 com 1x Tesla T4 Spot (~80% mais veloz na análise de logs).
+#           ATENÇÃO: Requer upgrade da conta GCP (sair do modo Free Trial restrito) e
+#           solicitação de aumento de cota para compute.googleapis.com/nvidia_t4_gpus >= 1.
+#   - false: Utiliza apenas nós gerais Spot com CPU (e2-standard-2 / e2-standard-4).
+#            Use false como fallback seguro caso sua cota de GPU ainda não tenha sido aprovada.
 enable_gpu_pool       = true
 gpu_type              = "nvidia-tesla-t4"
 gpu_machine_type      = "n1-standard-4"
