@@ -196,6 +196,10 @@ class ToolRegistry:
         """Cria uma branch git, commita o arquivo corrigido e abre PR."""
         norm_labels = ToolRegistry._normalize_labels(labels, "agent-fix")
         try:
+            status = subprocess.run(["git", "status", "--porcelain", "apps/", "observability/"], cwd=WORKSPACE_DIR, capture_output=True, text=True)
+            if not status.stdout.strip():
+                return "Erro: Nenhum arquivo foi modificado em apps/ ou observability/. Você DEVE chamar 'read_file' e depois 'apply_patch' para alterar o arquivo antes de chamar 'create_git_pr'."
+
             subprocess.run(["git", "checkout", "-B", branch_name], cwd=WORKSPACE_DIR, check=True, capture_output=True)
             subprocess.run(["git", "add", "apps/", "observability/"], cwd=WORKSPACE_DIR, check=True, capture_output=True)
             subprocess.run(["git", "commit", "-m", f"{commit_msg} [skip ci]"], cwd=WORKSPACE_DIR, check=True, capture_output=True)
@@ -403,8 +407,11 @@ Importante: execute primeiro as ferramentas de inspeção necessárias para diag
         obs = execute_tool(tool_name, tool_args)
         print(f"📊 Observação retornada ({len(obs)} caracteres):\n{obs[:400]}...")
 
-        # Ações terminais: encerram o ciclo com sucesso
-        if tool_name in ["create_issue", "create_git_pr"]:
+        # Ações terminais: encerram o ciclo apenas se concluídas com sucesso real
+        if tool_name == "create_issue" and ("Issue" in obs) and ("Falha" not in obs and "Erro" not in obs):
+            print(f"🎯 Ação terminal '{tool_name}' concluída com sucesso! Encerrando ciclo do agente.")
+            return obs
+        if tool_name == "create_git_pr" and ("Pull Request criado" in obs or "Branch" in obs) and ("Falha" not in obs and "Erro" not in obs):
             print(f"🎯 Ação terminal '{tool_name}' concluída com sucesso! Encerrando ciclo do agente.")
             return obs
 
@@ -439,7 +446,12 @@ def main():
         user_instruction = (
             f"Inicie a execução da sua tarefa para propor a correção (PR).\n"
             f"Contexto informado: {args.context}\n"
-            f"OBRIGATÓRIO: Responda imediatamente chamando uma ferramenta técnica em JSON (ex: 'view_issue' com o ID da issue) para analisar o incidente."
+            f"OBRIGATÓRIO: Siga rigorosamente este fluxo passo a passo:\n"
+            f"Passo 1: Chame 'view_issue' para ler o diagnóstico detalhado da issue.\n"
+            f"Passo 2: Chame 'read_file' no manifesto relevante (ex: 'apps/service-api/deployment.yaml').\n"
+            f"Passo 3: Chame 'apply_patch' para gravar o arquivo com a correção cirúrgica (ex: corrigindo o livenessProbe para '/healthz').\n"
+            f"Passo 4: Somente após 'apply_patch' ter sucesso, chame 'create_git_pr' com branch_name, commit_msg, pr_title, pr_body e labels=['agent-fix', 'signal:restart_count', 'app:service-api'].\n"
+            f"Inicie agora executando o Passo 1 com 'view_issue'."
         )
     else:
         user_instruction = f"Inicie a execução da sua tarefa de forma autônoma.\nContexto informado: {args.context}"
