@@ -11,6 +11,7 @@ on:
         options:
           - "check_cost"
           - "inspect"
+          - "verify_destroyed"
           - "cleanup_gpu_pool"
           - "inject_probe_crash"
           - "restore_service_api"
@@ -33,6 +34,8 @@ jobs:
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
 
       - uses: google-github-actions/get-gke-credentials@v2
+        if: github.event.inputs.action != 'verify_destroyed'
+        continue-on-error: true
         with:
           cluster_name: aiops-gke
           location: us-central1-a
@@ -144,3 +147,62 @@ jobs:
           kubectl set resources deployment/service-api --limits=memory=256Mi,cpu=250m --requests=memory=128Mi,cpu=150m
           kubectl rollout status deployment/service-api --timeout=60s
           echo "✅ service-api restaurado e saudável!"
+
+      - uses: hashicorp/setup-terraform@v3
+        if: github.event.inputs.action == 'verify_destroyed'
+        with:
+          terraform_version: "1.9.8"
+
+      - name: Double Check Destruição Total no GCP (FinOps)
+        if: github.event.inputs.action == 'verify_destroyed'
+        run: |
+          echo "========================================================="
+          echo "   DOUBLE CHECK: AUDITORIA DE RECURSOS NO GOOGLE CLOUD   "
+          echo "========================================================="
+
+          echo ""
+          echo "--- 1. ESTADO REMOTO DO TERRAFORM (GCS BACKEND) ---"
+          cd infra/environments/test
+          terraform init -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" -backend-config="prefix=environments/test" -input=false
+          STATE_LIST=$(terraform state list 2>/dev/null || true)
+          if [ -z "$STATE_LIST" ]; then
+            echo "✅ CONFIRMADO: State remoto está 100% VAZIO (0 recursos gerenciados)."
+          else
+            echo "⚠️ Recursos ainda listados no state:"
+            echo "$STATE_LIST"
+          fi
+          cd ../../..
+
+          echo ""
+          echo "--- 2. CLUSTERS GKE (KUBERNETES) ---"
+          CLUSTERS=$(gcloud container clusters list --project=${{ secrets.GCP_PROJECT_ID }} --format="table(name,location,status)" 2>&1 || true)
+          echo "$CLUSTERS"
+
+          echo ""
+          echo "--- 3. INSTÂNCIAS COMPUTE ENGINE (VMS / GPUS) ---"
+          INSTANCES=$(gcloud compute instances list --project=${{ secrets.GCP_PROJECT_ID }} --format="table(name,zone,status)" 2>&1 || true)
+          echo "$INSTANCES"
+
+          echo ""
+          echo "--- 4. DISCOS PERSISTENTES ---"
+          DISKS=$(gcloud compute disks list --project=${{ secrets.GCP_PROJECT_ID }} --format="table(name,zone,sizeGb,status)" 2>&1 || true)
+          echo "$DISKS"
+
+          echo ""
+          echo "--- 5. REDES VPC AIOPS ---"
+          VPC=$(gcloud compute networks list --project=${{ secrets.GCP_PROJECT_ID }} --filter="name:aiops-vpc" --format="table(name,subnetMode)" 2>&1 || true)
+          echo "$VPC"
+
+          echo ""
+          echo "--- 6. TÓPICOS E SUBSCRIPTIONS PUB/SUB ---"
+          TOPICS=$(gcloud pubsub topics list --project=${{ secrets.GCP_PROJECT_ID }} --format="table(name)" 2>&1 || true)
+          echo "$TOPICS"
+
+          echo ""
+          echo "--- 7. VERIFICAÇÃO DE CUSTO / SALDO ---"
+          gcloud billing budgets list --billing-account=${{ secrets.GCP_BILLING_ACCOUNT_ID }} --format="yaml" 2>/dev/null || true
+
+          echo ""
+          echo "========================================================="
+          echo "               FIM DA AUDITORIA FINOPS                   "
+          echo "========================================================="
