@@ -52,14 +52,14 @@ O objetivo deste ambiente é permitir desenvolvimento, testes de observabilidade
 
 | Recurso / Capacidade | Ambiente Nuvem (GCP) | Ambiente Local (Kind) |
 |---|---|---|
-| **Orquestração** | GKE Autopilot (`aiops-gke`) | Kind (`aiops-local`) v1.30 |
-| **Ingress / Rede** | Cloud Load Balancing (`LoadBalancer`) | Port Mappings Kind (`8080`, `8000`, `5080`, `8085`) |
+| **Orquestração** | GKE Standard Zonal SPOT (com opção GPU T4) | Kind (`aiops-local`) v1.31 |
+| **Ingress / Rede** | Cloud Load Balancing (`LoadBalancer`) | Port Mappings Kind (`8080`, `8000`, `5080`, `8085`, `3000`, `4040`) |
 | **Métricas de Pod & HPA** | GKE Metrics Server nativo | `metrics-server` v0.7.2 |
 | **Mensageria Assíncrona**| Google Cloud Pub/Sub Gerenciado | Google Cloud SDK Pub/Sub Emulator |
-| **Tracing & Logs** | Cloud Trace / Cloud Logging | **OpenObserve** v0.14.7 (Parquet) |
-| **Pipeline de Telemetria**| Agentes de telemetria GCP | **OpenTelemetry Collector** Contrib v0.108 |
-| **Agente Self-Healing** | GitHub Actions Runner (Ubuntu) | Container Docker `aiops-agent-runner` |
-| **Custo de Execução** | Orçamento efêmero FinOps | **R$ 0,00 (Totalmente local)** |
+| **Tracing, Logs & Profiling** | OpenObserve + Grafana Labs (Tempo, Loki, Pyroscope) | OpenObserve + Grafana Labs (Tempo, Loki, Pyroscope) |
+| **Pipeline de Telemetria**| OpenTelemetry Collector Two-Tier | OpenTelemetry Collector Two-Tier |
+| **Agente Self-Healing** | In-Cluster Runner acelerado por GPU Spot / Actions | Container Docker `aiops-agent-runner` |
+| **Custo de Execução** | Efêmero FinOps (~R$ 0,08/h) | **R$ 0,00 (Totalmente local)** |
 
 ---
 
