@@ -148,22 +148,38 @@ class ToolRegistry:
             return f"Erro ao gravar arquivo: {str(e)}"
 
     @staticmethod
-    def create_issue(title: str, body: str, labels: List[str]) -> str:
+    def _normalize_labels(labels: Any, default_label: str) -> List[str]:
+        if isinstance(labels, str):
+            res = [x.strip() for x in labels.split(",") if x.strip()]
+        elif isinstance(labels, (list, tuple)):
+            res = [str(x).strip() for x in labels if str(x).strip()]
+        else:
+            res = []
+        if default_label and default_label not in res:
+            res.append(default_label)
+        if AIOPS_ENV == "local" and "env:local" not in res:
+            res.append("env:local")
+        return res
+
+    @staticmethod
+    def create_issue(title: str, body: str, labels: Any) -> str:
         """Cria uma GitHub Issue (ou salva em agents/findings/ se modo file/offline)."""
-        if AIOPS_ENV == "local" and "env:local" not in labels:
-            labels.append("env:local")
+        norm_labels = ToolRegistry._normalize_labels(labels, "agent-finding")
         if LOCAL_TRACKER == "file":
-            return ToolRegistry.create_issue_local_fallback(title, body, labels, "Modo file configurado")
+            return ToolRegistry.create_issue_local_fallback(title, body, norm_labels, "Modo file configurado")
         try:
+            for l in norm_labels:
+                subprocess.run(["gh", "label", "create", l, "--force"], cwd=WORKSPACE_DIR, capture_output=True)
+
             cmd = ["gh", "issue", "create", "--title", title, "--body", body]
-            for l in labels:
+            for l in norm_labels:
                 cmd.extend(["--label", l])
             res = subprocess.run(cmd, capture_output=True, text=True, timeout=20, cwd=WORKSPACE_DIR)
             if res.returncode != 0:
-                return ToolRegistry.create_issue_local_fallback(title, body, labels, res.stderr)
+                return ToolRegistry.create_issue_local_fallback(title, body, norm_labels, res.stderr)
             return f"GitHub Issue criada com sucesso: {res.stdout.strip()}"
         except Exception as e:
-            return ToolRegistry.create_issue_local_fallback(title, body, labels, str(e))
+            return ToolRegistry.create_issue_local_fallback(title, body, norm_labels, str(e))
 
     @staticmethod
     def create_issue_local_fallback(title: str, body: str, labels: List[str], err: str) -> str:
@@ -176,10 +192,9 @@ class ToolRegistry:
         return f"Issue registrada localmente em: {issue_file} (ID: {issue_id}). [Info: {err.strip()}]"
 
     @staticmethod
-    def create_git_pr(branch_name: str, commit_msg: str, pr_title: str, pr_body: str, labels: List[str]) -> str:
+    def create_git_pr(branch_name: str, commit_msg: str, pr_title: str, pr_body: str, labels: Any) -> str:
         """Cria uma branch git, commita o arquivo corrigido e abre PR."""
-        if AIOPS_ENV == "local" and "env:local" not in labels:
-            labels.append("env:local")
+        norm_labels = ToolRegistry._normalize_labels(labels, "agent-fix")
         try:
             subprocess.run(["git", "checkout", "-B", branch_name], cwd=WORKSPACE_DIR, check=True, capture_output=True)
             subprocess.run(["git", "add", "apps/", "observability/"], cwd=WORKSPACE_DIR, check=True, capture_output=True)
@@ -192,8 +207,11 @@ class ToolRegistry:
             if push_res.returncode != 0:
                 return f"Branch {branch_name} commitada localmente. Push remoto indisponível: {push_res.stderr.strip()}"
 
+            for l in norm_labels:
+                subprocess.run(["gh", "label", "create", l, "--force"], cwd=WORKSPACE_DIR, capture_output=True)
+
             pr_cmd = ["gh", "pr", "create", "--title", pr_title, "--body", pr_body]
-            for l in labels:
+            for l in norm_labels:
                 pr_cmd.extend(["--label", l])
             pr_res = subprocess.run(pr_cmd, cwd=WORKSPACE_DIR, capture_output=True, text=True)
             if pr_res.returncode != 0:

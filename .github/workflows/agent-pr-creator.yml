@@ -91,15 +91,10 @@ jobs:
             sleep 1
           done
 
-          ISSUE_CONTENT=$(gh issue view "$ISSUE_NUMBER" 2>/dev/null || echo "Issue #${ISSUE_NUMBER}")
-
           python3 agents/engine/agent_runner.py \
             --role "pr-creator" \
             --task-file "agents/pr-creator/TASK.md" \
-            --context "Diagnóstico reportado na Issue #${ISSUE_NUMBER}:
-${ISSUE_CONTENT}
-
-Analise os manifestos em apps/ com 'read_file', aplique a correção cirúrgica com 'apply_patch' e crie o Pull Request com 'create_git_pr' (branch: agent-fix/issue-${ISSUE_NUMBER})."
+            --context "Issue #${ISSUE_NUMBER}: Leia a issue usando view_issue(issue_number=${ISSUE_NUMBER}), analise os manifestos em apps/ com read_file, aplique a correção cirúrgica com apply_patch e crie o Pull Request com create_git_pr(branch_name='agent-fix/issue-${ISSUE_NUMBER}')."
 
       # Motor Alternativo: Claude Code (SaaS externo / Anthropic API)
       # ATENÇÃO: Desativado por padrão! Somente executa se o operador humano escolher explicitamente via input ou label 'ai:claude'.
