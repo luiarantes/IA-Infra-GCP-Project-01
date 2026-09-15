@@ -411,7 +411,20 @@ def main():
             task_content = f.read()
 
     system_prompt = f"Você é o Agente de AIOps ({args.role}).\n{task_content}"
-    user_instruction = f"Inicie a execução da sua tarefa de forma autônoma.\nContexto informado: {args.context}"
+    if args.role == "log-analyzer":
+        user_instruction = (
+            f"Inicie a execução da sua tarefa investigando o cluster.\n"
+            f"Contexto informado: {args.context}\n"
+            f"OBRIGATÓRIO: Responda imediatamente chamando uma ferramenta técnica em JSON (ex: 'kubectl_inspect' com 'get pods -o wide') para inspecionar os pods e métricas antes de tirar conclusões."
+        )
+    elif args.role == "pr-creator":
+        user_instruction = (
+            f"Inicie a execução da sua tarefa para propor a correção (PR).\n"
+            f"Contexto informado: {args.context}\n"
+            f"OBRIGATÓRIO: Responda imediatamente chamando uma ferramenta técnica em JSON (ex: 'view_issue' com o ID da issue) para analisar o incidente."
+        )
+    else:
+        user_instruction = f"Inicie a execução da sua tarefa de forma autônoma.\nContexto informado: {args.context}"
 
     run_agent_loop(args.role, system_prompt, user_instruction)
 
