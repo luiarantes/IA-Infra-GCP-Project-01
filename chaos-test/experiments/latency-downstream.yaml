@@ -1,0 +1,21 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: latency-downstream
+  namespace: default
+  labels:
+    aiops.lab/chaos: "true"
+    aiops.lab/scenario: "latency-downstream"
+spec:
+  action: delay
+  mode: all
+  selector:
+    namespaces:
+      - default
+    labelSelectors:
+      app: service-downstream
+  delay:
+    latency: "3000ms"
+    jitter: "200ms"
+  direction: to
+  duration: "5m"

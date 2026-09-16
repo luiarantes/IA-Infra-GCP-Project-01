@@ -15,6 +15,21 @@ on:
         options:
           - "ollama-gpu"
           - "claude"
+      force_run:
+        description: "Ignorar pre-check de métricas e forçar investigação com IA (Modo Laboratório/Treinamento)"
+        required: false
+        default: false
+        type: boolean
+      target_app:
+        description: "Microsserviço alvo específico para investigação (opcional: ex: service-api, gateway, buscacep-api)"
+        required: false
+        default: ""
+        type: string
+      context_hint:
+        description: "Pista, contexto ou hipótese do operador humano (opcional)"
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: read
@@ -119,6 +134,18 @@ jobs:
           echo "latencia p95 (segundos): $LATENCY_P95"
           if is_gt "$LATENCY_P95" 1; then FOUND=true; SIGNALS="${SIGNALS}latency "; fi
 
+          # Sobrescrita manual / Modo Laboratório
+          if [ "${{ inputs.force_run }}" = "true" ]; then
+            echo "⚡ Modo Laboratório: Execução forçada solicitada pelo operador humano."
+            FOUND=true
+            SIGNALS="${SIGNALS}manual_force "
+          fi
+
+          if [ -n "${{ inputs.target_app }}" ]; then
+            echo "🎯 Alvo específico definido: ${{ inputs.target_app }}"
+            SIGNALS="${SIGNALS}target:${{ inputs.target_app }} "
+          fi
+
           echo "found=${FOUND}" >> "$GITHUB_OUTPUT"
           echo "signals=${SIGNALS}" >> "$GITHUB_OUTPUT"
 
@@ -158,11 +185,23 @@ jobs:
             sleep 1
           done
 
+          EXTRA_ARGS=""
+          if [ -n "${{ inputs.target_app }}" ]; then
+            EXTRA_ARGS="${EXTRA_ARGS} --app '${{ inputs.target_app }}'"
+          fi
+          if [ -n "${{ inputs.context_hint }}" ]; then
+            EXTRA_ARGS="${EXTRA_ARGS} --hint '${{ inputs.context_hint }}'"
+          fi
+          if [ "${{ inputs.force_run }}" = "true" ]; then
+            EXTRA_ARGS="${EXTRA_ARGS} --force"
+          fi
+
           # Executa o Agent Runner Engine agnóstico de Self-Healing
-          python3 agents/engine/agent_runner.py \
+          eval python3 agents/engine/agent_runner.py \
             --role "log-analyzer" \
             --task-file "agents/log-analyzer/TASK.md" \
-            --context "O pre-check encontrou sinal(is) de problema no cluster GKE: ${SIGNALS_FOUND}"
+            --context "\"O pre-check encontrou sinal(is) de problema no cluster GKE: ${SIGNALS_FOUND}\"" \
+            ${EXTRA_ARGS}
 
       # Motor Alternativo: Claude Code (SaaS externo / Anthropic API)
       # ATENÇÃO: Desativado por padrão! Somente executa se o operador humano escolher explicitamente no workflow dispatch.
@@ -178,10 +217,20 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GH_TOKEN: ${{ github.token }}
           SIGNALS_FOUND: ${{ steps.precheck.outputs.signals }}
+          TARGET_APP: ${{ github.event.inputs.target_app }}
+          CONTEXT_HINT: ${{ github.event.inputs.context_hint }}
         run: |
+          EXTRA_TXT=""
+          if [ -n "$TARGET_APP" ]; then
+            EXTRA_TXT="${EXTRA_TXT} Alvo direcionado: ${TARGET_APP}."
+          fi
+          if [ -n "$CONTEXT_HINT" ]; then
+            EXTRA_TXT="${EXTRA_TXT} Pista do operador: ${CONTEXT_HINT}."
+          fi
+
           TASK="$(cat agents/log-analyzer/TASK.md)
 
-          O pre-check encontrou sinal(is) de problema em: ${SIGNALS_FOUND}"
+          O pre-check encontrou sinal(is) de problema em: ${SIGNALS_FOUND}.${EXTRA_TXT}"
           claude -p "$TASK" \
             --allowedTools "Bash(kubectl get:*)" "Bash(kubectl describe:*)" "Bash(kubectl logs:*)" "Bash(kubectl top:*)" "Bash(gcloud logging read:*)" "Bash(gcloud monitoring:*)" "Bash(gh issue create:*)" "Bash(gh issue list:*)" "Bash(gh label create:*)"
 

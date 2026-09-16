@@ -62,16 +62,66 @@ if [ "${LOKI_ERRORS:-0}" -gt 0 ]; then
     SIGNALS="${SIGNALS}loki_errors "
 fi
 
+FORCE=false
+TARGET_APP=""
+CONTEXT_HINT=""
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --force)
+            FORCE=true
+            shift
+            ;;
+        --app)
+            TARGET_APP="$2"
+            shift 2
+            ;;
+        --hint)
+            CONTEXT_HINT="$2"
+            shift 2
+            ;;
+        *)
+            echo "Opção desconhecida: $1"
+            echo "Uso: $0 [--force] [--app <nome-do-app>] [--hint \"texto da pista\"]"
+            exit 1
+            ;;
+    esac
+done
+
+if [ "$FORCE" = "true" ]; then
+    echo "⚡ Modo Laboratório: Execução forçada solicitada pelo operador humano."
+    FOUND=true
+    SIGNALS="${SIGNALS}manual_force "
+fi
+
+if [ -n "$TARGET_APP" ]; then
+    echo "🎯 Alvo direcionado: ${TARGET_APP}"
+    SIGNALS="${SIGNALS}target:${TARGET_APP} "
+fi
+
 echo "---------------------------------------------------------"
 if [ "$FOUND" = "true" ]; then
     echo "🚨 Sinais de anomalia identificados pelo pre-check: ${SIGNALS}"
     echo "🤖 Acionando o modelo de IA para investigação e diagnóstico..."
     
+    EXTRA_ARGS=()
+    if [ -n "$TARGET_APP" ]; then
+        EXTRA_ARGS+=(--app "$TARGET_APP")
+    fi
+    if [ -n "$CONTEXT_HINT" ]; then
+        EXTRA_ARGS+=(--hint "$CONTEXT_HINT")
+    fi
+    if [ "$FORCE" = "true" ]; then
+        EXTRA_ARGS+=(--force)
+    fi
+
     python3 "${WORKSPACE_DIR}/agents/engine/agent_runner.py" \
         --role "log-analyzer" \
         --task-file "${WORKSPACE_DIR}/agents/log-analyzer/TASK.md" \
-        --context "O pre-check detectou o(s) seguinte(s) sinal(is) no cluster local: ${SIGNALS}"
+        --context "O pre-check detectou o(s) seguinte(s) sinal(is) no cluster local: ${SIGNALS}" \
+        "${EXTRA_ARGS[@]}"
 else
     echo "✅ Nenhum sinal de anomalia recente no cluster. IA não acionada (consumo zero de recursos)."
+    echo "💡 Dica: Para forçar investigação em modo laboratório/treinamento, use: $0 --force [--app <app>] [--hint <texto>]"
 fi
 echo "========================================================="

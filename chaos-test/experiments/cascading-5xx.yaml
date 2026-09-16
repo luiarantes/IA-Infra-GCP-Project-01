@@ -1,0 +1,21 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: HTTPChaos
+metadata:
+  name: cascading-5xx
+  namespace: default
+  labels:
+    aiops.lab/chaos: "true"
+    aiops.lab/scenario: "cascading-5xx"
+spec:
+  mode: all
+  selector:
+    namespaces:
+      - default
+    labelSelectors:
+      app: service-downstream
+  target: Request
+  port: 8000
+  method: GET
+  path: "*"
+  abort: true
+  duration: "5m"

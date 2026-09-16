@@ -175,6 +175,10 @@ local-aiops-demo:
 	@$(MAKE) local-aiops-verify
 	@echo "🎉 Loop de Self-Healing concluído com sucesso!"
 
+tshoot:
+	@chmod +x scripts/tshoot.sh
+	@./scripts/tshoot.sh $(CMD)
+
 gcp-up:
 	@echo "☁️ Disparando Terraform Apply no GCP via GitHub Actions..."
 	gh workflow run terraform-apply.yml --ref main --repo luiarantes/IA-Infra-GCP-Project-01

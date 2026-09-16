@@ -8,7 +8,35 @@ echo "========================================================="
 echo "    AIOps Agente 2: PR & Fix Creator (Local)             "
 echo "========================================================="
 
-ISSUE_NUM="${1:-${ISSUE:-}}"
+ISSUE_NUM=""
+OPERATOR_HINT=""
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --issue)
+            ISSUE_NUM="$2"
+            shift 2
+            ;;
+        --hint|--instruction)
+            OPERATOR_HINT="$2"
+            shift 2
+            ;;
+        *)
+            if [ -z "$ISSUE_NUM" ] && [[ "$1" =~ ^[0-9]+$ ]]; then
+                ISSUE_NUM="$1"
+                shift
+            else
+                echo "Opção desconhecida: $1"
+                echo "Uso: $0 [<numero-da-issue>] [--hint \"instrução adicional\"]"
+                exit 1
+            fi
+            ;;
+    esac
+done
+
+if [ -z "$ISSUE_NUM" ]; then
+    ISSUE_NUM="${ISSUE:-}"
+fi
 
 if [ -z "$ISSUE_NUM" ]; then
     echo "🔍 Procurando achados pendentes com label 'agent-finding'..."
@@ -29,7 +57,7 @@ fi
 
 if [ -z "$ISSUE_NUM" ]; then
     echo "ℹ️ Nenhuma Issue com label 'agent-finding' encontrada para atuar."
-    echo "Dica: Você pode informar manualmente via: ./agents/pr-creator/create-pr-local.sh <numero-da-issue>"
+    echo "Dica: Você pode informar manualmente via: ./agents/pr-creator/create-pr-local.sh <numero-da-issue> [--hint <instrução>]"
     exit 0
 fi
 
@@ -38,12 +66,18 @@ ISSUE_CONTENT=$(gh issue view "$ISSUE_NUM" 2>/dev/null || cat "${WORKSPACE_DIR}/
 
 echo "🤖 Acionando o modelo de IA para analisar o código e gerar a proposta de correção..."
 
+EXTRA_ARGS=()
+if [ -n "$OPERATOR_HINT" ]; then
+    EXTRA_ARGS+=(--hint "$OPERATOR_HINT")
+fi
+
 python3 "${WORKSPACE_DIR}/agents/engine/agent_runner.py" \
     --role "pr-creator" \
     --task-file "${WORKSPACE_DIR}/agents/pr-creator/TASK.md" \
     --context "Diagnóstico reportado na Issue #${ISSUE_NUM}:
 ${ISSUE_CONTENT}
 
-Analise os manifestos em apps/ com 'read_file', aplique a correção cirúrgica com 'apply_patch' e crie o Pull Request com 'create_git_pr' (branch: agent-fix/issue-${ISSUE_NUM})."
+Analise os manifestos em apps/ com 'read_file', aplique a correção cirúrgica com 'apply_patch' e crie o Pull Request com 'create_git_pr' (branch: agent-fix/issue-${ISSUE_NUM})." \
+    "${EXTRA_ARGS[@]}"
 
 echo "========================================================="

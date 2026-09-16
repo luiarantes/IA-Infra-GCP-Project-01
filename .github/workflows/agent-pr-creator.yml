@@ -25,6 +25,11 @@ on:
         description: "Número da issue para propor correção (se acionado manualmente)"
         required: false
         type: string
+      context_instruction:
+        description: "Instrução específica ou contexto adicional fornecido pelo operador humano (opcional)"
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: write
@@ -70,6 +75,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           ISSUE_NUMBER: ${{ github.event.inputs.issue_number || github.event.issue.number }}
+          CONTEXT_INSTRUCTION: ${{ github.event.inputs.context_instruction }}
           AIOPS_ENV: "gcp"
           AIOPS_AI_PROVIDER: "ollama"
           AIOPS_OLLAMA_MODEL: "qwen2.5-coder:7b"
@@ -91,10 +97,16 @@ jobs:
             sleep 1
           done
 
-          python3 agents/engine/agent_runner.py \
+          EXTRA_HINT=""
+          if [ -n "$CONTEXT_INSTRUCTION" ]; then
+            EXTRA_HINT=" --hint \"$CONTEXT_INSTRUCTION\""
+          fi
+
+          eval python3 agents/engine/agent_runner.py \
             --role "pr-creator" \
             --task-file "agents/pr-creator/TASK.md" \
-            --context "Issue #${ISSUE_NUMBER}: Leia a issue usando view_issue(issue_number=${ISSUE_NUMBER}), analise os manifestos em apps/ com read_file, aplique a correção cirúrgica com apply_patch e crie o Pull Request com create_git_pr(branch_name='agent-fix/issue-${ISSUE_NUMBER}')."
+            --context "\"Issue #${ISSUE_NUMBER}: Leia a issue usando view_issue(issue_number=${ISSUE_NUMBER}), analise os manifestos em apps/ com read_file, aplique a correção cirúrgica com apply_patch e crie o Pull Request com create_git_pr(branch_name='agent-fix/issue-${ISSUE_NUMBER}').\"" \
+            $EXTRA_HINT
 
       # Motor Alternativo: Claude Code (SaaS externo / Anthropic API)
       # ATENÇÃO: Desativado por padrão! Somente executa se o operador humano escolher explicitamente via input ou label 'ai:claude'.

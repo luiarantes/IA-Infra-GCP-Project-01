@@ -38,3 +38,9 @@ service-account*.json
 /.gemini/
 /.claude/
 
+# Python / Cache / Chaos Gabarito
+__pycache__/
+*.py[cod]
+*$py.class
+.ground-truth/
+

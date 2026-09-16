@@ -1,55 +1,64 @@
-# Testes de resiliência / chaos engineering (pós fase 8.4)
+# Chaos Engineering & Resiliência — AIOps Platform
 
-Usa o [Chaos Toolkit](https://chaostoolkit.org/) — CLI Python que fala
-com a API do Kubernetes usando as credenciais normais do pod
-(`ServiceAccount` do cluster, sem GCP IAM/Workload Identity nenhum).
-Escolhido em vez do Chaos Mesh: testamos o Chaos Mesh de verdade nesta
-sessão e confirmamos que o GKE Autopilot bloqueia o `chaos-daemon`
-(rejeitado pelo GKE Warden — `hostPID`, container privilegiado e
-`hostPath` em modo escrita não são permitidos em workloads que não são
-do próprio sistema GKE). O Chaos Toolkit evita esse problema desde o
-início: só usa a API padrão do Kubernetes (matar pod, consultar
-estado), sem nenhum componente privilegiado.
+Este módulo provê os mecanismos de injeção de falhas e engenharia de caos para validação da plataforma e treinamento de troubleshooting pelos operadores e agentes de IA.
 
-Disparo sob demanda, via `.github/workflows/chaos-test.yml`
-(`workflow_dispatch`) — mesma lógica de custo já usada nos agentes de
-IA e no `load-test.yml`.
+---
 
-## Experimentos disponíveis
+## 1. Motores Disponíveis
 
-- **`experiment-kill-gateway.json`**: mata um pod do `gateway` e
-  confirma que o Deployment se recupera sozinho. Cenário mais simples,
-  sem estado em trânsito.
-- **`experiment-kill-worker-mid-message.json`**: publica uma mensagem
-  via `POST /work` no gateway e mata o pod do `service-worker` logo em
-  seguida. O `service-worker` só dá `ack()` na mensagem depois de
-  processar com sucesso — se ele morrer antes disso, o Pub/Sub deve
-  reentregar a mensagem para o pod novo depois que o Deployment se
-  recupera.
+### A. Chaos Mesh (CNCF Incubating) — Padrão Oficial
+Com a evolução para **GKE Standard** (nós Spot dedicados com acesso completo a privilégios e GPU) e cluster local **Kind**, as restrições que existiam no antigo GKE Autopilot deixaram de existir. O Chaos Mesh atua como o motor oficial de caos nativo em Kubernetes através de Custom Resource Definitions (CRDs):
 
-## Rodar localmente (sem CI)
+* `NetworkChaos`: Injeção de latência fina e perda de pacotes no tráfego de microsserviços.
+* `HTTPChaos`: Injeção de códigos de erro HTTP (ex: 500) e abortos em endpoints.
+* `StressChaos`: Contenção severa de CPU (Throttling) e esgotamento de memória (Slow OOM).
+* `PodChaos`: Simulação de falhas de hardware e terminação abrupta de pods.
 
-Com `kubectl` já autenticado no cluster:
+### B. Chaos Toolkit (Legado)
+Mantido para execução pontual via Job Kubernetes padrão (`chaos-test/job.yaml`).
+
+---
+
+## 2. Injetor Randômico com Gabarito (`chaos_randomizer.py`)
+
+Para evitar testes determinísticos e simular incidentes imprevistos de produção, o utilitário `chaos_randomizer.py` sorteia aleatoriamente um entre diversos cenários e registra o **Gabarito (Ground Truth)** em `.ground-truth/ground-truth.json`.
+
+### Cenários no Catálogo:
+1. **`latency-downstream`**: Injeta 3000ms de atraso nas respostas do `service-downstream`.
+2. **`cascading-5xx`**: Injeta respostas HTTP 500 no `service-downstream`.
+3. **`cpu-throttling`**: Estressa CPU em 95% no `service-api`.
+4. **`slow-oom`**: Aloca memória progressivamente no `service-api` até forçar `OOMKilled` (Exit Code 137).
+5. **`pod-kill`**: Mata pod do `gateway` avaliando resiliência do Deployment.
+
+---
+
+## 3. Como Executar
+
+### Via GitHub Actions:
+Dispare o workflow `Chaos Test` (`.github/workflows/chaos-test.yml`) via `workflow_dispatch`:
+* `engine`: `chaos-mesh`
+* `scenario`: `random` (ou selecione um específico)
+* O arquivo `ground-truth.json` é publicado automaticamente como artefato da run para auditoria.
+
+### Via Terminal Local (CLI):
 
 ```bash
-kubectl apply -f chaos-test/rbac.yaml
+# Instalar Chaos Mesh no cluster atual (Kind ou GKE)
+./chaos-test/chaos-mesh/install.sh
 ```
 
 ```bash
-kubectl delete job chaos-test --ignore-not-found
+# Sortear e aplicar um cenário aleatório gerando o Ground Truth
+python3 chaos-test/chaos_randomizer.py --scenario random --action apply
 ```
 
 ```bash
-kubectl create configmap chaos-experiment --from-file=experiment.json=chaos-test/experiment-kill-gateway.json --dry-run=client -o yaml | kubectl apply -f -
+# Inspecionar o gabarito ativo
+python3 chaos-test/chaos_randomizer.py --action status
 ```
 
 ```bash
-kubectl apply -f chaos-test/job.yaml
+# Limpar experimentos de caos ativos
+python3 chaos-test/chaos_randomizer.py --action clean
 ```
 
-```bash
-kubectl logs -f job/chaos-test
-```
-
-Troque o `--from-file` pelo outro experimento pra rodar o outro
-cenário.

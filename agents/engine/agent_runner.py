@@ -192,20 +192,104 @@ class ToolRegistry:
         return f"Issue registrada localmente em: {issue_file} (ID: {issue_id}). [Info: {err.strip()}]"
 
     @staticmethod
+    def calculate_risk_score(diff_text: str, modified_files: List[str]) -> tuple:
+        """Calcula um score determinístico de risco (0-100) para triagem humana do PR."""
+        file_type_score = 10
+        file_desc = "Manifestos declarativos (.yaml/.json)"
+        if any(f.endswith(".py") for f in modified_files):
+            file_type_score = 40
+            file_desc = "Código-fonte executável Python (.py)"
+
+        nature_score = 15
+        nature_desc = "Configuração Geral"
+        diff_lower = diff_text.lower()
+        if any(term in diff_lower for term in ["resources:", "limits:", "requests:", "livenessprobe:", "readinessprobe:", "startupprobe:"]):
+            nature_score = 10
+            nature_desc = "Ajuste Operacional de Recursos ou Healthcheck Probes"
+        elif any(term in diff_lower for term in ["env:", "command:", "args:", "volumemounts:", "volumes:", "image:"]):
+            nature_score = 25
+            nature_desc = "Alteração Estrutural de Runtime (Env / Volumes / Imagem)"
+
+        service_score = 15
+        service_desc = "Serviço Padrão"
+        joined_files = " ".join(modified_files).lower()
+        if "gateway" in joined_files:
+            service_score = 25
+            service_desc = "gateway (Ingress / Ponto de Entrada Crítico)"
+        elif "service-api" in joined_files or "buscacep-api" in joined_files:
+            service_score = 20
+            service_desc = "Core API (Processamento Central)"
+        elif "service-worker" in joined_files or "buscacep-worker" in joined_files:
+            service_score = 15
+            service_desc = "Worker Assíncrono (Fila Pub/Sub)"
+        elif "service-downstream" in joined_files:
+            service_score = 10
+            service_desc = "Downstream Helper Service"
+
+        diff_lines = len([l for l in diff_text.splitlines() if (l.startswith("+") or l.startswith("-")) and not (l.startswith("+++") or l.startswith("---"))])
+        if diff_lines <= 10:
+            diff_score = 5
+            diff_desc = f"{diff_lines} linhas alteradas (Diff Mínimo)"
+        elif diff_lines <= 30:
+            diff_score = 15
+            diff_desc = f"{diff_lines} linhas alteradas (Diff Moderado)"
+        else:
+            diff_score = 30
+            diff_desc = f"{diff_lines} linhas alteradas (Diff Amplo)"
+
+        total_score = min(100, file_type_score + nature_score + service_score + diff_score)
+
+        if total_score < 30:
+            risk_label = "risk:low"
+            risk_badge = "🟢 Baixo Risco (risk:low)"
+        elif total_score <= 60:
+            risk_label = "risk:medium"
+            risk_badge = "🟡 Médio Risco (risk:medium)"
+        else:
+            risk_label = "risk:high"
+            risk_badge = "🔴 Alto Risco (risk:high)"
+
+        report = f"""
+### 🛡️ Avaliação Determinística de Risco (Blast Radius)
+
+| Critério | Avaliação | Pontos |
+| :--- | :--- | :--- |
+| **Tipo de Arquivo** | {file_desc} | +{file_type_score} pts |
+| **Natureza do Patch** | {nature_desc} | +{nature_score} pts |
+| **Criticidade do Componente** | {service_desc} | +{service_score} pts |
+| **Volume de Modificações** | {diff_desc} | +{diff_score} pts |
+| **Score Total de Risco** | **{total_score} / 100** | **{risk_badge}** |
+
+> [!NOTE]
+> **Human-in-the-Loop Inviolável**: Esta pontuação é estritamente informativa para orientar a revisão. O PR requer 100% de conferência e aprovação humana antes de qualquer deploy no cluster.
+"""
+        return total_score, risk_label, report
+
+    @staticmethod
     def create_git_pr(branch_name: str, commit_msg: str, pr_title: str, pr_body: str, labels: Any) -> str:
-        """Cria uma branch git, commita o arquivo corrigido e abre PR."""
+        """Cria uma branch git, commita o arquivo corrigido e abre PR com score de risco."""
         norm_labels = ToolRegistry._normalize_labels(labels, "agent-fix")
         try:
             status = subprocess.run(["git", "status", "--porcelain", "apps/", "observability/"], cwd=WORKSPACE_DIR, capture_output=True, text=True)
             if not status.stdout.strip():
                 return "Erro: Nenhum arquivo foi modificado em apps/ ou observability/. Você DEVE chamar 'read_file' e depois 'apply_patch' para alterar o arquivo antes de chamar 'create_git_pr'."
 
+            # Captura o diff para cálculo do score determinístico de risco
+            diff_res = subprocess.run(["git", "diff", "apps/", "observability/"], cwd=WORKSPACE_DIR, capture_output=True, text=True)
+            mod_files = [line.strip().split()[-1] for line in status.stdout.strip().splitlines() if line.strip()]
+            score, risk_label, risk_report = ToolRegistry.calculate_risk_score(diff_res.stdout, mod_files)
+
+            if risk_label not in norm_labels:
+                norm_labels.append(risk_label)
+
+            full_pr_body = f"{pr_body.strip()}\n\n{risk_report}"
+
             subprocess.run(["git", "checkout", "-B", branch_name], cwd=WORKSPACE_DIR, check=True, capture_output=True)
             subprocess.run(["git", "add", "apps/", "observability/"], cwd=WORKSPACE_DIR, check=True, capture_output=True)
             subprocess.run(["git", "commit", "-m", f"{commit_msg} [skip ci]"], cwd=WORKSPACE_DIR, check=True, capture_output=True)
             
             if LOCAL_TRACKER == "file":
-                return f"Branch {branch_name} criada e commitada com sucesso no Git local (modo offline ativo)."
+                return f"Branch {branch_name} criada e commitada com sucesso no Git local (modo offline ativo). Score de risco: {score} ({risk_label})."
 
             push_res = subprocess.run(["git", "push", "-u", "origin", branch_name, "--force"], cwd=WORKSPACE_DIR, capture_output=True, text=True)
             if push_res.returncode != 0:
@@ -214,15 +298,15 @@ class ToolRegistry:
             for l in norm_labels:
                 subprocess.run(["gh", "label", "create", l, "--force"], cwd=WORKSPACE_DIR, capture_output=True)
 
-            pr_cmd = ["gh", "pr", "create", "--title", pr_title, "--body", pr_body]
+            pr_cmd = ["gh", "pr", "create", "--title", pr_title, "--body", full_pr_body]
             for l in norm_labels:
                 pr_cmd.extend(["--label", l])
             pr_res = subprocess.run(pr_cmd, cwd=WORKSPACE_DIR, capture_output=True, text=True)
             if pr_res.returncode != 0:
                 if "already exists" in pr_res.stderr.lower():
-                    return f"Branch atualizada e commit enviado para o PR existente ({branch_name})."
+                    return f"Branch atualizada e commit enviado para o PR existente ({branch_name}). Score de risco: {score} ({risk_label})."
                 return f"Branch enviada. PR via gh retornou: {pr_res.stderr.strip()}"
-            return f"Pull Request criado com sucesso: {pr_res.stdout.strip()}"
+            return f"Pull Request criado com sucesso: {pr_res.stdout.strip()} [Score de risco: {score} ({risk_label})]"
         except Exception as e:
             return f"Falha na automação Git/PR: {str(e)}"
 
@@ -240,6 +324,46 @@ class ToolRegistry:
             with open(local_file, "r", encoding="utf-8") as f:
                 return f.read()
         return f"Issue #{issue_number} não encontrada."
+
+    @staticmethod
+    def view_ground_truth(file_path: str = "") -> str:
+        """Lê o gabarito (Ground Truth) seguro gerado pelo injetor de caos."""
+        target_path = file_path if file_path else os.path.join(WORKSPACE_DIR, "chaos-test/.ground-truth/ground-truth.json")
+        if not os.path.exists(target_path):
+            return "Erro: Nenhum arquivo de gabarito (ground-truth.json) encontrado. Execute o injetor de caos primeiro."
+        try:
+            with open(target_path, "r", encoding="utf-8") as f:
+                return f.read()
+        except Exception as e:
+            return f"Erro ao ler ground-truth: {str(e)}"
+
+    @staticmethod
+    def view_pull_request(pr_number: int) -> str:
+        """Lê o título, descrição, labels e diff de um Pull Request para auditoria."""
+        try:
+            res = subprocess.run(["gh", "pr", "view", str(pr_number)], cwd=WORKSPACE_DIR, capture_output=True, text=True, timeout=15)
+            diff_res = subprocess.run(["gh", "pr", "diff", str(pr_number)], cwd=WORKSPACE_DIR, capture_output=True, text=True, timeout=15)
+            out = res.stdout.strip()
+            if diff_res.returncode == 0 and diff_res.stdout.strip():
+                out += f"\n\n--- Diff do PR #{pr_number} ---\n{diff_res.stdout.strip()}"
+            return out or f"PR #{pr_number} não retornou dados."
+        except Exception as e:
+            return f"Erro ao consultar PR #{pr_number}: {str(e)}"
+
+    @staticmethod
+    def publish_scorecard(issue_number: int, scorecard_markdown: str) -> str:
+        """Publica o Chaos Scorecard como comentário na Issue ou arquivo local de auditoria."""
+        try:
+            res = subprocess.run(["gh", "issue", "comment", str(issue_number), "--body", scorecard_markdown], cwd=WORKSPACE_DIR, capture_output=True, text=True)
+            if res.returncode == 0:
+                return f"Scorecard publicado com sucesso como comentário na Issue #{issue_number}."
+        except Exception:
+            pass
+        out_file = os.path.join(WORKSPACE_DIR, f"agents/findings/scorecard-issue-{issue_number}.md")
+        os.makedirs(os.path.dirname(out_file), exist_ok=True)
+        with open(out_file, "w", encoding="utf-8") as f:
+            f.write(scorecard_markdown)
+        return f"Scorecard publicado localmente em: {out_file} (Issue #{issue_number})."
 
 
 TOOLS_SCHEMA = [
@@ -287,6 +411,21 @@ TOOLS_SCHEMA = [
         "name": "create_git_pr",
         "description": "Cria branch Git, commita o arquivo corrigido e abre um Pull Request (agent-fix).",
         "parameters": {"type": "object", "properties": {"branch_name": {"type": "string"}, "commit_msg": {"type": "string"}, "pr_title": {"type": "string"}, "pr_body": {"type": "string"}, "labels": {"type": "array", "items": {"type": "string"}}}, "required": ["branch_name", "commit_msg", "pr_title", "pr_body", "labels"]}
+    },
+    {
+        "name": "view_ground_truth",
+        "description": "Lê o gabarito oficial e parâmetros da injeção de caos (Ground Truth) para auditoria.",
+        "parameters": {"type": "object", "properties": {"file_path": {"type": "string"}}, "required": []}
+    },
+    {
+        "name": "view_pull_request",
+        "description": "Lê detalhes e diff completo de um Pull Request para auditoria de patch.",
+        "parameters": {"type": "object", "properties": {"pr_number": {"type": "integer"}}, "required": ["pr_number"]}
+    },
+    {
+        "name": "publish_scorecard",
+        "description": "Publica o relatório final de auditoria (Chaos Scorecard) com nota de resiliência e acurácia.",
+        "parameters": {"type": "object", "properties": {"issue_number": {"type": "integer"}, "scorecard_markdown": {"type": "string"}}, "required": ["issue_number", "scorecard_markdown"]}
     }
 ]
 
@@ -315,7 +454,21 @@ def execute_tool(name: str, args: Dict[str, Any]) -> str:
         return ToolRegistry.create_issue(args.get("title", ""), args.get("body", ""), args.get("labels", []))
     elif name == "create_git_pr":
         return ToolRegistry.create_git_pr(args.get("branch_name", ""), args.get("commit_msg", ""), args.get("pr_title", ""), args.get("pr_body", ""), args.get("labels", []))
+    elif name == "view_ground_truth":
+        return ToolRegistry.view_ground_truth(args.get("file_path", ""))
+    elif name == "view_pull_request":
+        pr_num = args.get("pr_number") or args.get("pr") or args.get("number", 1)
+        try:
+            return ToolRegistry.view_pull_request(int(str(pr_num).replace("#", "")))
+        except Exception:
+            return ToolRegistry.view_pull_request(1)
+    elif name == "publish_scorecard":
+        issue_num = args.get("issue_number") or args.get("issue") or 1
+        return ToolRegistry.publish_scorecard(int(str(issue_num).replace("#", "")), args.get("scorecard_markdown", ""))
     return f"Ferramenta desconhecida: {name}"
+
+
+OLLAMA_TIMEOUT = int(os.getenv("AIOPS_OLLAMA_TIMEOUT", "300"))
 
 
 def call_ollama(messages: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -325,12 +478,13 @@ def call_ollama(messages: List[Dict[str, Any]]) -> Dict[str, Any]:
         "model": OLLAMA_MODEL,
         "messages": messages,
         "temperature": 0.1,
-        "stream": False
+        "stream": False,
+        "keep_alive": "30m"
     }
     data = json.dumps(payload).encode("utf-8")
     req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"}, method="POST")
     try:
-        with urllib.request.urlopen(req, timeout=180) as resp:
+        with urllib.request.urlopen(req, timeout=OLLAMA_TIMEOUT) as resp:
             if resp.status != 200:
                 raise RuntimeError(f"Falha na API do Ollama ({resp.status}): {resp.read().decode('utf-8')}")
             return json.loads(resp.read().decode("utf-8"))
@@ -342,7 +496,8 @@ def run_agent_loop(role: str, system_prompt: str, user_instruction: str, max_tur
     """Executa o loop ReAct do agente interagindo com o modelo de IA."""
     role_tool_names = {
         "log-analyzer": ["kubectl_inspect", "query_prometheus", "scrape_pod_metrics", "query_loki_logs", "create_issue"],
-        "pr-creator": ["view_issue", "read_file", "apply_patch", "create_git_pr"]
+        "pr-creator": ["view_issue", "read_file", "apply_patch", "create_git_pr"],
+        "evaluator": ["view_ground_truth", "view_issue", "view_pull_request", "read_file", "publish_scorecard"]
     }.get(role, [t["name"] for t in TOOLS_SCHEMA])
 
     active_tools = [t for t in TOOLS_SCHEMA if t["name"] in role_tool_names]
@@ -358,7 +513,7 @@ Para executar uma ferramenta técnica, responda com um bloco JSON EXATAMENTE nes
   "arguments": {{ "param1": "valor" }}
 }}
 ```
-Importante: execute primeiro as ferramentas de inspeção necessárias para diagnosticar a causa-raiz com dados reais. Ao concluir o diagnóstico, chame 'create_issue' (para log-analyzer) ou 'create_git_pr' (para pr-creator).
+Importante: execute primeiro as ferramentas de inspeção necessárias para diagnosticar a causa-raiz com dados reais. Ao concluir o diagnóstico, chame 'create_issue' (para log-analyzer), 'create_git_pr' (para pr-creator) ou 'publish_scorecard' (para evaluator).
 """
     messages = [
         {"role": "system", "content": system_prompt + "\n\n" + tools_prompt},
@@ -414,6 +569,9 @@ Importante: execute primeiro as ferramentas de inspeção necessárias para diag
         if tool_name == "create_git_pr" and ("Pull Request criado" in obs or "Branch" in obs) and ("Falha" not in obs and "Erro" not in obs):
             print(f"🎯 Ação terminal '{tool_name}' concluída com sucesso! Encerrando ciclo do agente.")
             return obs
+        if tool_name == "publish_scorecard" and ("Scorecard" in obs) and ("Falha" not in obs and "Erro" not in obs):
+            print(f"🎯 Ação terminal '{tool_name}' concluída com sucesso! Encerrando ciclo do agente.")
+            return obs
 
         messages.append({
             "role": "user",
@@ -425,9 +583,12 @@ Importante: execute primeiro as ferramentas de inspeção necessárias para diag
 
 def main():
     parser = argparse.ArgumentParser(description="AIOps Agent Runner")
-    parser.add_argument("--role", choices=["log-analyzer", "pr-creator"], required=True, help="Papel do agente")
+    parser.add_argument("--role", choices=["log-analyzer", "pr-creator", "evaluator"], required=True, help="Papel do agente")
     parser.add_argument("--task-file", help="Caminho para o TASK.md")
     parser.add_argument("--context", default="", help="Contexto operacional (sinais ou número da issue)")
+    parser.add_argument("--app", default="", help="Foco em um microsserviço específico (opcional)")
+    parser.add_argument("--hint", default="", help="Pista, contexto ou hipótese do operador humano (opcional)")
+    parser.add_argument("--force", action="store_true", help="Força investigação ignorando pre-check de métricas")
     args = parser.parse_args()
 
     task_content = ""
@@ -435,17 +596,25 @@ def main():
         with open(args.task_file, "r", encoding="utf-8") as f:
             task_content = f.read()
 
+    enriched_context = args.context
+    if args.app:
+        enriched_context += f" | Foco investigativo direcionado ao componente: '{args.app}'"
+    if args.hint:
+        enriched_context += f" | Pista fornecida pelo operador humano: '{args.hint}'"
+    if args.force:
+        enriched_context += " | Modo: Forçado manualmente por operador (Modo Laboratório/Treinamento)"
+
     system_prompt = f"Você é o Agente de AIOps ({args.role}).\n{task_content}"
     if args.role == "log-analyzer":
         user_instruction = (
             f"Inicie a execução da sua tarefa investigando o cluster.\n"
-            f"Contexto informado: {args.context}\n"
+            f"Contexto informado: {enriched_context}\n"
             f"OBRIGATÓRIO: Responda imediatamente chamando uma ferramenta técnica em JSON (ex: 'kubectl_inspect' com 'get pods -o wide') para inspecionar os pods e métricas antes de tirar conclusões."
         )
     elif args.role == "pr-creator":
         user_instruction = (
             f"Inicie a execução da sua tarefa para propor a correção (PR).\n"
-            f"Contexto informado: {args.context}\n"
+            f"Contexto informado: {enriched_context}\n"
             f"OBRIGATÓRIO: Siga rigorosamente este fluxo passo a passo:\n"
             f"Passo 1: Chame 'view_issue' para ler o diagnóstico detalhado da issue.\n"
             f"Passo 2: Chame 'read_file' no manifesto relevante (ex: 'apps/service-api/deployment.yaml').\n"
@@ -453,8 +622,20 @@ def main():
             f"Passo 4: Somente após 'apply_patch' ter sucesso, chame 'create_git_pr' com branch_name, commit_msg, pr_title, pr_body e labels=['agent-fix', 'signal:restart_count', 'app:service-api'].\n"
             f"Inicie agora executando o Passo 1 com 'view_issue'."
         )
+    elif args.role == "evaluator":
+        user_instruction = (
+            f"Inicie a execução da sua tarefa como Agente Avaliador Autônomo (Evaluator Agent).\n"
+            f"Contexto informado: {enriched_context}\n"
+            f"OBRIGATÓRIO: Siga rigorosamente este fluxo passo a passo:\n"
+            f"Passo 1: Chame 'view_ground_truth' para ler o gabarito oficial da injeção de caos.\n"
+            f"Passo 2: Chame 'view_issue' para ler o diagnóstico reportado pelo log-analyzer.\n"
+            f"Passo 3: Opcionalmente chame 'view_pull_request' para avaliar a qualidade e o raio de explosão do patch proposto.\n"
+            f"Passo 4: Compare a causa-raiz identificada com o gabarito oficial e calcule a Acurácia de Causa-Raiz (RCA Accuracy: 0-100%).\n"
+            f"Passo 5: Formate o relatório Markdown do Chaos Scorecard e chame 'publish_scorecard' com a nota final de resiliência.\n"
+            f"Inicie agora executando o Passo 1 com 'view_ground_truth'."
+        )
     else:
-        user_instruction = f"Inicie a execução da sua tarefa de forma autônoma.\nContexto informado: {args.context}"
+        user_instruction = f"Inicie a execução da sua tarefa de forma autônoma.\nContexto informado: {enriched_context}"
 
     run_agent_loop(args.role, system_prompt, user_instruction)
 

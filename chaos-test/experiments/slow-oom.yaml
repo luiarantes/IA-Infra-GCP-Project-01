@@ -1,0 +1,20 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: StressChaos
+metadata:
+  name: slow-oom
+  namespace: default
+  labels:
+    aiops.lab/chaos: "true"
+    aiops.lab/scenario: "slow-oom"
+spec:
+  mode: one
+  selector:
+    namespaces:
+      - default
+    labelSelectors:
+      app: service-api
+  stressors:
+    memory:
+      workers: 1
+      size: "280Mi"
+  duration: "5m"

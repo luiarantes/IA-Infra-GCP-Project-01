@@ -1,0 +1,103 @@
+name: Agent - Evaluator
+
+# Auditoria autônoma pós-incidente:
+# Avalia a hipótese do log-analyzer e o patch do pr-creator comparando com o
+# Gabarito Oficial (Ground Truth) do Chaos Randomizer e emite o Chaos Scorecard.
+on:
+  workflow_dispatch:
+    inputs:
+      ai_engine:
+        description: "Motor de IA (ollama-gpu = Privado/Zero Egress no GKE [DEFAULT] | claude = Claude Code [Apenas via escolha humana])"
+        required: true
+        default: "ollama-gpu"
+        type: choice
+        options:
+          - "ollama-gpu"
+          - "claude"
+      issue_number:
+        description: "Número da Issue com o diagnóstico do log-analyzer para auditar"
+        required: true
+        type: string
+      pr_number:
+        description: "Número do PR com o patch proposto pelo pr-creator (opcional)"
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+  id-token: write
+
+env:
+  CLUSTER_NAME: aiops-gke
+  CLUSTER_LOCATION: us-central1-a
+  GCP_PROJECT: ${{ secrets.GCP_PROJECT_ID }}
+
+jobs:
+  evaluate-resilience:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ env.CLUSTER_NAME }}
+          location: ${{ env.CLUSTER_LOCATION }}
+          project_id: ${{ env.GCP_PROJECT }}
+
+      # Motor Padrão: Modelo Privado/Local (Ollama com aceleração GPU no GKE)
+      - name: "Auditar Incidente com IA Local (Ollama GPU no GKE - Default)"
+        if: github.event.inputs.ai_engine != 'claude'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ github.event.inputs.issue_number }}
+          PR_NUMBER: ${{ github.event.inputs.pr_number }}
+          AIOPS_ENV: "gcp"
+          AIOPS_AI_PROVIDER: "ollama"
+          AIOPS_OLLAMA_MODEL: "qwen2.5-coder:7b"
+          AIOPS_LOCAL_TRACKER: "github"
+        run: |
+          set -e
+          echo "🤖 [AIOps Evaluator]: Iniciando auditoria autônoma de resiliência com Ollama GPU no GKE..."
+
+          kubectl port-forward svc/ollama 11434:11434 -n default > /tmp/pf-ollama-eval.log 2>&1 &
+          PF_OLLAMA=$!
+          trap "kill $PF_OLLAMA 2>/dev/null || true" EXIT
+
+          echo "⏳ Aguardando endpoint do Ollama GPU..."
+          for i in {1..30}; do
+            if curl -s http://localhost:11434/api/version >/dev/null 2>&1; then
+              echo "✅ Conexão com o Ollama GPU estabelecida com sucesso!"
+              break
+            fi
+            sleep 1
+          done
+
+          python3 agents/engine/agent_runner.py \
+            --role "evaluator" \
+            --task-file "agents/evaluator/TASK.md" \
+            --context "Auditoria de Resiliência: Avaliar o diagnóstico da Issue #${ISSUE_NUMBER} e o PR #${PR_NUMBER:-nenhum} comparando contra o Ground Truth em 'chaos-test/.ground-truth/ground-truth.json'. Emita o Chaos Scorecard usando publish_scorecard(issue_number=${ISSUE_NUMBER})."
+
+      # Motor Alternativo: Claude Code (SaaS externo / Anthropic API)
+      - name: "Auditar Incidente com Claude Code (Externo / Anthropic)"
+        if: github.event.inputs.ai_engine == 'claude'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ github.event.inputs.issue_number }}
+          PR_NUMBER: ${{ github.event.inputs.pr_number }}
+        run: |
+          npm install -g @anthropic-ai/claude-code
+          TASK="$(cat agents/evaluator/TASK.md)
+
+          Audite a Issue #${ISSUE_NUMBER} e o PR #${PR_NUMBER} contra chaos-test/.ground-truth/ground-truth.json e comente o Chaos Scorecard na Issue."
+          claude -p "$TASK" \
+            --allowedTools "Bash(gh issue view:*)" "Bash(gh issue comment:*)" "Bash(gh pr view:*)" "Bash(gh pr diff:*)" "Read"

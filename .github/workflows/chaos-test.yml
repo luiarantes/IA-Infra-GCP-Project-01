@@ -1,24 +1,40 @@
 name: Chaos Test
 
-# Testes de resiliencia via Chaos Toolkit (ver chaos-test/README.md).
-# Escolhido em vez do Chaos Mesh depois de testar de verdade nesta
-# sessao: o GKE Autopilot bloqueia o chaos-daemon privilegiado que o
-# Chaos Mesh precisa pra experimentos de rede/stress. O Chaos Toolkit
-# so usa a API padrao do Kubernetes, sem esse problema.
-#
-# So workflow_dispatch, de proposito - mesma logica de custo sob
-# demanda ja usada nos agentes de IA e no load-test.
-
+# Testes de resiliencia e injeção de falhas no cluster.
+# Suporta:
+# 1. Chaos Mesh (Líder CNCF Incubating, padrão para GKE Standard e Kind) com injeção randômica e Ground Truth.
+# 2. Chaos Toolkit (Job K8s nativo legado).
 on:
   workflow_dispatch:
     inputs:
-      scenario:
-        description: "Cenario de chaos a rodar"
+      engine:
+        description: "Motor de Chaos Engineering"
         required: true
+        default: "chaos-mesh"
         type: choice
         options:
-          - kill-gateway
-          - kill-worker-mid-message
+          - "chaos-mesh"
+          - "chaos-toolkit"
+      scenario:
+        description: "Cenário de caos ('random' sorteia aleatoriamente e gera gabarito seguro)"
+        required: true
+        default: "random"
+        type: choice
+        options:
+          - "random"
+          - "latency-downstream"
+          - "cascading-5xx"
+          - "cpu-throttling"
+          - "slow-oom"
+          - "pod-kill"
+          - "clean"
+          - "kill-gateway"
+          - "kill-worker-mid-message"
+      duration:
+        description: "Duração da anomalia no cluster (ex: 5m, 3m)"
+        required: false
+        default: "5m"
+        type: string
 
 permissions:
   contents: read
@@ -46,30 +62,76 @@ jobs:
           location: ${{ env.CLUSTER_LOCATION }}
           project_id: ${{ secrets.GCP_PROJECT_ID }}
 
+      # -----------------------------------------------------------------------
+      # FLUXO A: Chaos Mesh (Motor Oficial CNCF / GKE Standard)
+      # -----------------------------------------------------------------------
+      - name: Verificar / Instalar Chaos Mesh via Helm
+        if: inputs.engine == 'chaos-mesh' && inputs.scenario != 'clean'
+        run: |
+          if ! kubectl get ns chaos-mesh >/dev/null 2>&1; then
+            echo "📦 Namespace chaos-mesh não encontrado. Instalando Chaos Mesh..."
+            chmod +x chaos-test/chaos-mesh/install.sh
+            ./chaos-test/chaos-mesh/install.sh
+          else
+            echo "✅ Chaos Mesh já se encontra instalado no cluster."
+          fi
+
+      - name: Executar Injetor de Caos (Chaos Randomizer)
+        if: inputs.engine == 'chaos-mesh' && inputs.scenario != 'clean'
+        run: |
+          python3 chaos-test/chaos_randomizer.py \
+            --scenario "${{ inputs.scenario }}" \
+            --action apply \
+            --duration "${{ inputs.duration }}"
+
+      - name: Limpar Experimentos de Caos Ativos
+        if: inputs.engine == 'chaos-mesh' && inputs.scenario == 'clean'
+        run: |
+          python3 chaos-test/chaos_randomizer.py --action clean
+
+      - name: Publicar Gabarito (Ground Truth) como Artefato Seguro
+        if: inputs.engine == 'chaos-mesh' && inputs.scenario != 'clean'
+        uses: actions/upload-artifact@v4
+        with:
+          name: chaos-ground-truth
+          path: chaos-test/.ground-truth/ground-truth.json
+          retention-days: 7
+
+      # -----------------------------------------------------------------------
+      # FLUXO B: Chaos Toolkit (Legado via Job K8s)
+      # -----------------------------------------------------------------------
       - name: Aplicar RBAC do Chaos Toolkit (idempotente)
+        if: inputs.engine == 'chaos-toolkit' || inputs.scenario == 'kill-gateway' || inputs.scenario == 'kill-worker-mid-message'
         run: kubectl apply -f chaos-test/rbac.yaml
 
       - name: Gerar o ConfigMap a partir do experimento escolhido
+        if: inputs.engine == 'chaos-toolkit' || inputs.scenario == 'kill-gateway' || inputs.scenario == 'kill-worker-mid-message'
         run: |
+          SCENARIO_NAME="${{ inputs.scenario }}"
+          if [ "$SCENARIO_NAME" = "random" ]; then SCENARIO_NAME="kill-gateway"; fi
           kubectl create configmap chaos-experiment \
-            --from-file=experiment.json="chaos-test/experiment-${{ inputs.scenario }}.json" \
+            --from-file=experiment.json="chaos-test/experiment-${SCENARIO_NAME}.json" \
             --dry-run=client -o yaml | kubectl apply -f -
 
-      - name: Recriar o Job (Jobs sao imutaveis, precisa apagar o antigo)
-        run: kubectl delete job chaos-test --ignore-not-found
-
-      - name: Disparar o experimento
-        run: kubectl apply -f chaos-test/job.yaml
-
-      - name: Aguardar o experimento terminar
+      - name: Recriar o Job do Chaos Toolkit
+        if: inputs.engine == 'chaos-toolkit' || inputs.scenario == 'kill-gateway' || inputs.scenario == 'kill-worker-mid-message'
         run: |
+          kubectl delete job chaos-test --ignore-not-found
+          kubectl apply -f chaos-test/job.yaml
           kubectl wait --for=condition=complete job/chaos-test --timeout=180s || \
             kubectl wait --for=condition=failed job/chaos-test --timeout=10s || true
+          kubectl logs job/chaos-test
 
-      - name: Resultado do experimento (journal do Chaos Toolkit)
+      # -----------------------------------------------------------------------
+      # Telemetria pós-experimento
+      # -----------------------------------------------------------------------
+      - name: Estado dos pods pós-injeção
         if: always()
-        run: kubectl logs job/chaos-test
-
-      - name: Estado dos pods depois do experimento
-        if: always()
-        run: kubectl get pods
+        run: |
+          echo "=== PODS STATUS (DEFAULT) ==="
+          kubectl get pods -n default -o wide
+          echo ""
+          if kubectl get ns chaos-mesh >/dev/null 2>&1; then
+            echo "=== EXPERIMENTOS CHAOS MESH ATIVOS ==="
+            kubectl get networkchaos,httpchaos,stresschaos,podchaos -n default || true
+          fi
