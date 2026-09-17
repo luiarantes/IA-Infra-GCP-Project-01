@@ -7,7 +7,13 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ## [Unreleased]
 
+### Added
+- **control-panel**: Painel de Controle e Hub de Observabilidade dinâmico e 100% autocontido (offline-first), com interface visual Dark Mode, catálogo de ferramentas, métricas, atalhos de console e monitoramento de conectividade sem dependência de CDNs externas.
+- **chaos-test**: Exposição nativa do Chaos Mesh Dashboard (porta 2333) sem necessidade de port-forward, configurado como `NodePort` no cluster local Kind e `LoadBalancer` (IP público) no GKE, com target `make chaos-ui` e integração direta no Painel de Controle.
+- **scripts**: Script automatizado `sync_control_panel.py` para descoberta dinâmica de portas locais (Kind) e IPs externos de Load Balancers (GKE), com suporte a resumo em Markdown e integração com `make panel`, `make panel-sync` e GitHub Actions ($GITHUB_STEP_SUMMARY).
+
 ### Fixed
+- **observability**: Otimização do Grafana Beyla com exclusão de rotas de probes internas (`/healthz`, `/readyz`, `/metrics`, pushes de profiling) e desativação de `trace_printer` em stdout, eliminando sobrecarga e contenção de CPU na VM do Docker.
 - **local**: Prevenção de colisão de portas dinâmicas no Kind através da reserva estática antecipada de `local-ingress-services.yaml` no `apply_local_manifests.py`.
 - **local**: Ajuste de serviços `LoadBalancer` para `ClusterIP` em tempo de execução local, eliminando status `<pending>` e conflito com a porta `30901` do MinIO.
 

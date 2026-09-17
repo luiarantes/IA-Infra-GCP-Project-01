@@ -36,9 +36,20 @@ metadata:
   namespace: default
 data:
   beyla-config.yml: |
-    trace_printer: text
     otel_traces_export:
       endpoint: "http://otel-collector:4318"
+    routes:
+      ignored_patterns:
+        - /health
+        - /healthz
+        - /ready
+        - /readyz
+        - /metrics
+        - /livez
+        - /push.*
+        - /v1/logs
+        - /v1/traces
+      ignore_mode: all
     discovery:
       services:
         - k8s_deployment_name: "buscacep-api"
