@@ -15,6 +15,12 @@ def apply_yaml(content: str):
 def main():
     print("📄 Aplicando manifestos dos microsserviços e do BuscaCEP...")
 
+    # 1. Aplicar NodePort services para acesso direto em localhost primeiro
+    # Isso reserva as portas 30000, 30080, 30300, 30440, 30901 no Kind e evita colisões.
+    local_ingress_path = INFRA_DIR / "local" / "manifests" / "local-ingress-services.yaml"
+    with open(local_ingress_path) as f:
+        apply_yaml(f.read())
+
     # ServiceAccount compartilhada
     sa_path = INFRA_DIR / "apps" / "shared" / "serviceaccount.yaml"
     with open(sa_path) as f:
@@ -25,7 +31,7 @@ def main():
     with open(otel_col_path) as f:
         apply_yaml(f.read())
 
-    # Gateway
+    # Gateway (ajustado para ClusterIP no Kind local, pois o gateway-local NodePort 30080 cuida do hostPort 8080)
     with open(INFRA_DIR / "apps" / "gateway" / "deployment.yaml") as f:
         content = f.read().replace("${IMAGE}", "gateway:local").replace("${PROJECT_ID}", "aiops-local")
         env_extra = f"""            - name: OTEL_EXPORTER_OTLP_ENDPOINT
@@ -34,7 +40,8 @@ def main():
         content = content.replace("          env:\n", "          env:\n" + env_extra)
         apply_yaml(content)
     with open(INFRA_DIR / "apps" / "gateway" / "service.yaml") as f:
-        apply_yaml(f.read())
+        content = f.read().replace("type: LoadBalancer", "type: ClusterIP")
+        apply_yaml(content)
     with open(INFRA_DIR / "apps" / "gateway" / "hpa.yaml") as f:
         apply_yaml(f.read())
 
@@ -101,17 +108,14 @@ def main():
             content = content.replace("          env:\n", "          env:\n" + env_extra)
             apply_yaml(content)
 
+        # BuscaCEP API Service (ClusterIP no Kind; buscacep-api-local cuida do NodePort 30000 -> 8000)
         with open(APPS_DIR / "k8s" / "service.yaml") as f:
-            apply_yaml(f.read())
+            content = f.read().replace("type: LoadBalancer", "type: ClusterIP")
+            apply_yaml(content)
         with open(APPS_DIR / "k8s" / "hpa.yaml") as f:
             apply_yaml(f.read())
     else:
         print(f"⚠️ Diretório do BuscaCEP não encontrado em: {APPS_DIR}")
-
-    # NodePort services para acesso direto em localhost
-    local_ingress_path = INFRA_DIR / "local" / "manifests" / "local-ingress-services.yaml"
-    with open(local_ingress_path) as f:
-        apply_yaml(f.read())
 
     print("✅ Todos os manifestos foram aplicados com sucesso!")
 

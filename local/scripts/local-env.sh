@@ -59,26 +59,22 @@ provision_workloads() {
     kubectl apply -f "${INFRA_DIR}/observability/grafana.yaml"
 
 
-    echo "🔨 [3/6] Construindo imagens Docker dos microsserviços, do BuscaCEP e do agente..."
+    echo "🔨 [3/6] Construindo imagens Docker dos microsserviços e do BuscaCEP..."
     docker build -t gateway:local "${INFRA_DIR}/apps/gateway"
     docker build -t service-api:local "${INFRA_DIR}/apps/service-api"
     docker build -t service-worker:local "${INFRA_DIR}/apps/service-worker"
     docker build -t service-downstream:local "${INFRA_DIR}/apps/service-downstream"
-    docker build -t aiops-agent-runner:local "${INFRA_DIR}/agents/runner"
+
+    LOAD_IMAGES=("gateway:local" "service-api:local" "service-worker:local" "service-downstream:local")
 
     if [ -n "${APPS_REPO_DIR}" ] && [ -d "${APPS_REPO_DIR}" ]; then
         echo "📦 Construindo imagem do BuscaCEP (App)..."
         docker build -t buscacep:local "${APPS_REPO_DIR}"
+        LOAD_IMAGES+=("buscacep:local")
     fi
 
-    echo "🚚 [4/6] Carregando imagens Docker para dentro do cluster Kind..."
-    kind load docker-image gateway:local --name "${CLUSTER_NAME}"
-    kind load docker-image service-api:local --name "${CLUSTER_NAME}"
-    kind load docker-image service-worker:local --name "${CLUSTER_NAME}"
-    kind load docker-image service-downstream:local --name "${CLUSTER_NAME}"
-    if [ -n "${APPS_REPO_DIR}" ] && [ -d "${APPS_REPO_DIR}" ]; then
-        kind load docker-image buscacep:local --name "${CLUSTER_NAME}"
-    fi
+    echo "🚚 [4/6] Carregando imagens Docker em lote para dentro do cluster Kind..."
+    kind load docker-image "${LOAD_IMAGES[@]}" --name "${CLUSTER_NAME}"
 
     echo "📄 [5/6] Aplicando manifestos Kubernetes..."
     python3 "${SCRIPT_DIR}/apply_local_manifests.py"
@@ -158,6 +154,10 @@ run_test() {
 
 run_agent() {
     echo "🤖 Executando o container do Agente Self-Healing contra o cluster local..."
+    if ! docker image inspect aiops-agent-runner:local >/dev/null 2>&1; then
+        echo "🔨 Construindo imagem Docker do agente runner sob demanda..."
+        docker build -t aiops-agent-runner:local "${INFRA_DIR}/agents/runner"
+    fi
     KUBECONFIG_PATH="${HOME}/.kube/config"
     TTY_FLAG=""
     if [ -t 0 ]; then

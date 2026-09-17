@@ -44,7 +44,7 @@ metadata:
   labels:
     app: pyroscope
 spec:
-  type: LoadBalancer
+  type: ClusterIP
   selector:
     app: pyroscope
   ports:
