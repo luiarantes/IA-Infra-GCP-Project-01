@@ -52,6 +52,12 @@ variable "minio_port" {
   default     = 9001
 }
 
+variable "chaos_dashboard_port" {
+  description = "Porta no host para o Dashboard do Chaos Mesh"
+  type        = number
+  default     = 2333
+}
+
 variable "grafana_stack_mode" {
   description = "Modo de implantação da stack Grafana Labs: 'simple' (monolítico leve, ~8GB Docker) ou 'distributed' (produção com MinIO S3 Object Storage, ~12GB Docker)"
   type        = string

@@ -135,3 +135,10 @@ jobs:
             echo "=== EXPERIMENTOS CHAOS MESH ATIVOS ==="
             kubectl get networkchaos,httpchaos,stresschaos,podchaos -n default || true
           fi
+
+      - name: Sincronizar Painel de Controle AIOps
+        if: always()
+        run: |
+          echo "🎛️ Sincronizando Painel de Controle com os endpoints de Caos..."
+          python3 scripts/sync_control_panel.py --env gcp --summary || true
+

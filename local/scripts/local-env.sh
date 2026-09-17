@@ -101,11 +101,16 @@ provision_workloads() {
         kubectl rollout status deployment/buscacep-worker --timeout=90s || true
     fi
 
+    echo "🎛️ Sincronizando Painel de Controle AIOps..."
+    python3 "${INFRA_DIR}/scripts/sync_control_panel.py" --env local || true
+
     echo ""
     echo "================================================================="
     echo " 🎉 Ambiente Local AIOps (Kind) 100% no ar e operacional!"
     echo "    Modo de Observabilidade Grafana: ${MODE}"
     echo "================================================================="
+    echo " 🎛️ Painel de Controle (Hub):    file://${INFRA_DIR}/control-panel/index.html"
+    echo "    (Abra no navegador com: make panel)"
     echo " 🌐 Gateway da Infra (Entrada):   http://localhost:8080"
     echo " 🌐 BuscaCEP Web & API:           http://localhost:8000"
     echo " 📊 OpenObserve (Dashboards/OTel):http://localhost:5080"
@@ -113,6 +118,7 @@ provision_workloads() {
     echo " 📈 Grafana OSS (Loki/Tempo/APM): http://localhost:3000"
     echo "    (Login: admin / admin)"
     echo " 🔥 Pyroscope (Continuous Profile):http://localhost:4040"
+    echo " 🌪️ Chaos Mesh Dashboard:        http://localhost:2333"
     echo " 📬 Google Pub/Sub Emulator:      http://localhost:8085"
     if [ "${MODE}" = "distributed" ]; then
     echo " 🗄️ MinIO S3 Console (Storage):   http://localhost:9001"

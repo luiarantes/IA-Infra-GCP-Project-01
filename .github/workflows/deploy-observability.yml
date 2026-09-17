@@ -125,3 +125,9 @@ jobs:
           echo "📈 Grafana OSS Web UI: http://${GRAFANA_IP:-<pendente>}:3000"
           echo "   Credenciais: admin / admin"
           echo "========================================================="
+
+      - name: Sincronizar e Publicar Painel de Controle AIOps
+        run: |
+          echo "🎛️ Sincronizando links no Painel de Controle AIOps para ambiente GCP..."
+          python3 scripts/sync_control_panel.py --env gcp --summary
+

@@ -32,4 +32,8 @@ nodes:
       - containerPort: 30901
         hostPort: 9001
         protocol: TCP
+      # Chaos Mesh Dashboard Web UI
+      - containerPort: 32333
+        hostPort: 2333
+        protocol: TCP
 

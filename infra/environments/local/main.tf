@@ -47,6 +47,11 @@ resource "kind_cluster" "default" {
         host_port      = var.minio_port
         protocol       = "TCP"
       }
+      extra_port_mappings {
+        container_port = 32333
+        host_port      = var.chaos_dashboard_port
+        protocol       = "TCP"
+      }
     }
   }
 }

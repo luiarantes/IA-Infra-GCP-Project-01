@@ -1,10 +1,12 @@
-.PHONY: help local-up local-up-simple local-up-distributed local-down local-status local-test local-agent local-load-test local-chaos-test local-traffic-start local-traffic-stop local-dashboards-reload obs-ui grafana-ui pyroscope-ui minio-ui local-aiops-ollama-up local-aiops-ollama-down local-aiops-chaos local-aiops-analyze local-aiops-fix local-aiops-verify local-aiops-demo gcp-up gcp-down aws-up aws-down
+.PHONY: help local-up local-up-simple local-up-distributed local-down local-status local-test local-agent local-load-test local-chaos-test local-traffic-start local-traffic-stop local-dashboards-reload obs-ui grafana-ui pyroscope-ui minio-ui chaos-ui panel panel-sync local-aiops-ollama-up local-aiops-ollama-down local-aiops-chaos local-aiops-analyze local-aiops-fix local-aiops-verify local-aiops-demo gcp-up gcp-down aws-up aws-down
 
 help:
 	@echo "========================================================================="
 	@echo "           AIOps Platform CLI — Multi-Target IaC & Observability         "
 	@echo "========================================================================="
 	@echo "  💻 Ambiente Local (Kind + Terraform + OpenObserve + Agentes):"
+	@echo "    make panel               - Sincroniza links e abre o Painel de Controle AIOps no navegador"
+	@echo "    make panel-sync          - Sincroniza links do ambiente ativo e exibe resumo"
 	@echo "    make local-up            - Provisiona cluster local via Terraform e sobe os servicos (modo do tfvars)"
 	@echo "    make local-up-simple     - Sobe ambiente local com Grafana Stack Simples (~8GB Docker)"
 	@echo "    make local-up-distributed - Sobe ambiente local com Grafana Stack Distribuida + MinIO S3 (~12GB Docker)"
@@ -21,6 +23,7 @@ help:
 	@echo "    make grafana-ui          - Abre a interface web do Grafana OSS no navegador"
 	@echo "    make pyroscope-ui        - Abre a interface web do Pyroscope no navegador"
 	@echo "    make minio-ui            - Abre a interface web do MinIO Console no navegador"
+	@echo "    make chaos-ui            - Abre a interface web do Chaos Mesh Dashboard no navegador"
 	@echo ""
 	@echo "  🤖 Agentes AIOps & Self-Healing Local (Ollama + Telemetria):"
 	@echo "    make local-aiops-ollama-up   - Sobe container Docker do Ollama com modelo qwen2.5-coder:7b"
@@ -47,6 +50,7 @@ local-up:
 	@terraform -chdir=infra/environments/local apply -auto-approve
 	@echo "✅ Ambiente local provisionado e operacional!"
 	@terraform -chdir=infra/environments/local output
+	@python3 scripts/sync_control_panel.py --env local
 
 local-up-simple:
 	@echo "🚀 Provisionando ambiente local (Kind) no modo Grafana Stack Simples..."
@@ -54,6 +58,7 @@ local-up-simple:
 	@terraform -chdir=infra/environments/local apply -var="grafana_stack_mode=simple" -auto-approve
 	@echo "✅ Ambiente local (Modo Simples) provisionado e operacional!"
 	@terraform -chdir=infra/environments/local output
+	@python3 scripts/sync_control_panel.py --env local
 
 local-up-distributed:
 	@echo "🚀 Provisionando ambiente local (Kind) no modo Grafana Stack Distribuída (MinIO S3)..."
@@ -61,6 +66,7 @@ local-up-distributed:
 	@terraform -chdir=infra/environments/local apply -var="grafana_stack_mode=distributed" -auto-approve
 	@echo "✅ Ambiente local (Modo Distribuído) provisionado e operacional!"
 	@terraform -chdir=infra/environments/local output
+	@python3 scripts/sync_control_panel.py --env local
 
 
 local-down:
@@ -122,6 +128,16 @@ pyroscope-ui:
 minio-ui:
 	@echo "🗄️ Abrindo MinIO Console em http://localhost:9001 ..."
 	@open http://localhost:9001 2>/dev/null || echo "Acesse: http://localhost:9001 (Login: minioadmin / minioadmin)"
+
+chaos-ui:
+	@echo "🌪️ Abrindo Chaos Mesh Dashboard em http://localhost:2333 ..."
+	@open http://localhost:2333 2>/dev/null || echo "Acesse: http://localhost:2333"
+
+panel:
+	@python3 scripts/sync_control_panel.py --open
+
+panel-sync:
+	@python3 scripts/sync_control_panel.py --summary
 
 local-dashboards-reload:
 	@echo "🔄 Atualizando dashboards do Grafana a partir de observability/grafana-dashboards.yaml..."

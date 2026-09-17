@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AIOps Control Panel & Observability Hub</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+  <!-- Top Bar / Header -->
+  <header class="top-header">
+    <div class="header-container">
+      <div class="brand-section">
+        <div class="brand-icon">
+          <!-- SVG Radar/AIOps icon -->
+          <svg class="icon-svg icon-lg" viewBox="0 0 24 24">
+            <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/>
+            <path d="M12 6a6 6 0 1 0 6 6 6 6 0 0 0-6-6zm0 10a4 4 0 1 1 4-4 4 4 0 0 1-4 4z"/>
+            <circle cx="12" cy="12" r="2"/>
+          </svg>
+        </div>
+        <div>
+          <h1 class="brand-title">AIOps Control Panel</h1>
+          <p class="brand-subtitle">Observabilidade, Plataforma Efêmera & Self-Healing</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <!-- Switcher de Ambiente -->
+        <div class="env-selector" role="tablist">
+          <button id="btn-env-local" class="env-tab active" onclick="setEnvironment('local')">
+            <svg class="icon-svg" viewBox="0 0 24 24">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+              <line x1="8" y1="21" x2="16" y2="21"/>
+              <line x1="12" y1="17" x2="12" y2="21"/>
+            </svg>
+            Local (Kind)
+          </button>
+          <button id="btn-env-gcp" class="env-tab" onclick="setEnvironment('gcp')">
+            <svg class="icon-svg" viewBox="0 0 24 24">
+              <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>
+            </svg>
+            GCP Cloud (GKE)
+          </button>
+        </div>
+
+        <!-- Botão Health Check -->
+        <button class="btn btn-primary" onclick="runHealthChecks()" title="Verificar disponibilidade dos serviços">
+          <svg class="icon-svg" viewBox="0 0 24 24">
+            <polyline points="23 4 23 10 17 10"/>
+            <polyline points="1 20 1 14 7 14"/>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+          </svg>
+          Testar Conectividade
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Conteúdo Principal -->
+  <main class="main-content">
+    
+    <!-- Banner de Status & Sincronização -->
+    <section class="sync-banner">
+      <div class="sync-info">
+        <span class="status-indicator"></span>
+        <span>Ambiente Selecionado: <strong id="current-env-label" style="color: var(--text-primary);">Local (Kind)</strong></span>
+        <span>•</span>
+        <span>Última Sincronização: <span id="last-sync-label" class="sync-timestamp">-</span></span>
+      </div>
+      <div style="display: flex; gap: 0.5rem; align-items: center;">
+        <input type="text" id="search-input" placeholder="Filtrar ferramentas ou métricas..." 
+               style="background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: var(--radius-sm); padding: 5px 10px; font-size: 0.8rem; width: 220px;"
+               oninput="filterCards(this.value)">
+      </div>
+    </section>
+
+    <!-- Container dos Cards Categorizados -->
+    <div id="cards-container">
+      <!-- Injetado dinamicamente via JS -->
+    </div>
+
+    <!-- Comandos Rápidos do Terminal -->
+    <section class="category-section" style="margin-top: 2rem;">
+      <div class="category-header">
+        <h2 class="category-title">
+          <svg class="icon-svg" style="color: var(--color-brand);" viewBox="0 0 24 24">
+            <polyline points="4 17 10 11 4 5"/>
+            <line x1="12" y1="19" x2="20" y2="19"/>
+          </svg>
+          Comandos Rápidos de Terminal
+        </h2>
+        <span class="category-count" id="commands-count">6</span>
+      </div>
+
+      <div class="terminal-grid" id="terminal-container">
+        <!-- Injetado dinamicamente via JS -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Rodapé -->
+  <footer class="page-footer">
+    <p>AIOps GCP Platform • Operação Efêmera, Observabilidade & Auto-Remediação Orientada a Eventos</p>
+  </footer>
+
+  <!-- Notificação Toast -->
+  <div id="toast">Copiado para a área de transferência!</div>
+
+  <!-- Script de Dados Inicial (100% Offline) -->
+  <script src="data.js"></script>
+
+  <!-- Lógica da Interface -->
+  <script>
+    let currentEnv = 'local';
+    let appData = null;
+    const healthStatus = {};
+
+    // Dicionário de ícones em SVG inline puro (zero dependência externa)
+    const ICONS = {
+      'activity': `<svg class="icon-svg" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>`,
+      'bar-chart': `<svg class="icon-svg" viewBox="0 0 24 24"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>`,
+      'flame': `<svg class="icon-svg" viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>`,
+      'cloud': `<svg class="icon-svg" viewBox="0 0 24 24"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>`,
+      'search': `<svg class="icon-svg" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`,
+      'file-text': `<svg class="icon-svg" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>`,
+      'code': `<svg class="icon-svg" viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>`,
+      'heart': `<svg class="icon-svg" viewBox="0 0 24 24"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>`,
+      'layers': `<svg class="icon-svg" viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>`,
+      'inbox': `<svg class="icon-svg" viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>`,
+      'database': `<svg class="icon-svg" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>`,
+      'server': `<svg class="icon-svg" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>`,
+      'archive': `<svg class="icon-svg" viewBox="0 0 24 24"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>`,
+      'dollar-sign': `<svg class="icon-svg" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`,
+      'play-circle': `<svg class="icon-svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>`,
+      'alert-triangle': `<svg class="icon-svg" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
+      'git-pull-request': `<svg class="icon-svg" viewBox="0 0 24 24"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="21"/></svg>`,
+      'external-link': `<svg class="icon-svg" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`,
+      'zap': `<svg class="icon-svg" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`,
+      'copy': `<svg class="icon-svg" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`
+    };
+
+    function init() {
+      if (window.AIOPS_DATA) {
+        appData = window.AIOPS_DATA;
+        currentEnv = appData.active_env || 'local';
+        render();
+      } else {
+        fetch('links.json')
+          .then(res => res.json())
+          .then(data => {
+            appData = data;
+            currentEnv = appData.active_env || 'local';
+            render();
+          })
+          .catch(err => {
+            console.error('Erro ao carregar dados:', err);
+          });
+      }
+    }
+
+    function setEnvironment(env) {
+      currentEnv = env;
+      document.getElementById('btn-env-local').classList.toggle('active', env === 'local');
+      document.getElementById('btn-env-gcp').classList.toggle('active', env === 'gcp');
+      document.getElementById('current-env-label').textContent = env === 'local' ? 'Local (Kind)' : 'GCP Cloud (GKE)';
+      render();
+    }
+
+    function render(filterQuery = '') {
+      if (!appData) return;
+
+      // Atualiza timestamp
+      const syncDate = new Date(appData.last_synced_at);
+      document.getElementById('last-sync-label').textContent = syncDate.toLocaleString('pt-BR');
+
+      // Agrupa serviços por categoria
+      const categories = [
+        { id: 'observability', title: 'Observabilidade & APM' },
+        { id: 'apps', title: 'Aplicações & Microsserviços' },
+        { id: 'gcp', title: 'Plataforma GCP & FinOps' },
+        { id: 'aiops', title: 'Automação & Self-Healing' }
+      ];
+
+      const container = document.getElementById('cards-container');
+      container.innerHTML = '';
+
+      categories.forEach(cat => {
+        let services = appData.services.filter(s => s.category === cat.id);
+        
+        if (filterQuery.trim()) {
+          const q = filterQuery.toLowerCase();
+          services = services.filter(s => 
+            s.name.toLowerCase().includes(q) || 
+            s.description.toLowerCase().includes(q)
+          );
+        }
+
+        if (services.length === 0) return;
+
+        const section = document.createElement('section');
+        section.className = 'category-section';
+
+        const header = document.createElement('div');
+        header.className = 'category-header';
+        header.innerHTML = `
+          <h2 class="category-title">${cat.title}</h2>
+          <span class="category-count">${services.length}</span>
+        `;
+        section.appendChild(header);
+
+        const grid = document.createElement('div');
+        grid.className = 'cards-grid';
+
+        services.forEach(svc => {
+          const card = renderCard(svc);
+          grid.appendChild(card);
+        });
+
+        section.appendChild(grid);
+        container.appendChild(section);
+      });
+
+      renderCommands();
+    }
+
+    function renderCard(svc) {
+      const card = document.createElement('div');
+      card.className = `service-card category-${svc.category}`;
+
+      const targetUrl = currentEnv === 'local' ? svc.local_url : svc.gcp_url;
+      const isPending = targetUrl.includes('<PENDING>');
+      const statusKey = `${svc.id}-${currentEnv}`;
+      const currentHealth = healthStatus[statusKey] || (svc.is_external ? 'external' : (isPending ? 'pending' : 'default'));
+
+      let statusHtml = '';
+      if (currentHealth === 'online') {
+        statusHtml = `<span class="health-badge online">● Online</span>`;
+      } else if (currentHealth === 'offline') {
+        statusHtml = `<span class="health-badge offline">● Inacessível</span>`;
+      } else if (currentHealth === 'pending' || isPending) {
+        statusHtml = `<span class="health-badge pending">● Alocando IP</span>`;
+      } else if (currentHealth === 'external') {
+        statusHtml = `<span class="health-badge external">↗ Cloud Console</span>`;
+      } else {
+        statusHtml = `<span class="health-badge external">● Ativo</span>`;
+      }
+
+      const iconSvg = ICONS[svc.icon] || ICONS['activity'];
+
+      let metaHtml = '';
+      if (svc.credentials) {
+        metaHtml = `
+          <div class="card-meta">
+            <span class="meta-label">Credenciais:</span>
+            <span class="meta-val">${svc.credentials.user} / ${svc.credentials.pass}</span>
+            <button class="btn-copy" style="padding: 2px 5px;" onclick="copyToClipboard('${svc.credentials.user} / ${svc.credentials.pass}', 'Credenciais copiadas!')" title="Copiar credenciais">
+              ${ICONS['copy']}
+            </button>
+          </div>
+        `;
+      } else if (currentEnv === 'local' && svc.local_port) {
+        metaHtml = `
+          <div class="card-meta">
+            <span class="meta-label">Porta Local:</span>
+            <span class="meta-val">:${svc.local_port}</span>
+          </div>
+        `;
+      }
+
+      card.innerHTML = `
+        <div>
+          <div class="card-top">
+            <div class="card-title-area">
+              <div class="card-icon">${iconSvg}</div>
+              <h3 class="card-title">${svc.name}</h3>
+            </div>
+            ${statusHtml}
+          </div>
+          <p class="card-desc">${svc.description}</p>
+        </div>
+
+        <div>
+          ${metaHtml}
+          <div class="card-actions">
+            <a href="${isPending ? '#' : targetUrl}" target="_blank" rel="noopener noreferrer" 
+               class="card-link ${isPending ? 'disabled' : ''}">
+              ${isPending ? 'Aguardando IP' : 'Acessar Ferramenta'}
+              ${ICONS['external-link']}
+            </a>
+            ${!isPending ? `
+            <button class="btn-copy" onclick="copyToClipboard('${targetUrl}', 'Link copiado!')" title="Copiar link">
+              ${ICONS['copy']}
+            </button>` : ''}
+          </div>
+        </div>
+      `;
+
+      return card;
+    }
+
+    function renderCommands() {
+      const terminalContainer = document.getElementById('terminal-container');
+      if (!terminalContainer || !appData.quick_commands) return;
+
+      terminalContainer.innerHTML = '';
+      document.getElementById('commands-count').textContent = appData.quick_commands.length;
+
+      appData.quick_commands.forEach(cmd => {
+        const item = document.createElement('div');
+        item.className = 'terminal-card';
+        item.innerHTML = `
+          <div class="terminal-header">
+            <span class="terminal-desc">${cmd.description}</span>
+          </div>
+          <div class="terminal-cmd">
+            <code>${cmd.command}</code>
+            <button class="btn-copy" style="padding: 3px 6px;" onclick="copyToClipboard('${cmd.command.replace(/'/g, "\\'")}', 'Comando copiado!')" title="Copiar comando">
+              ${ICONS['copy']}
+            </button>
+          </div>
+        `;
+        terminalContainer.appendChild(item);
+      });
+    }
+
+    function filterCards(text) {
+      render(text);
+    }
+
+    function copyToClipboard(text, message = 'Copiado para a área de transferência!') {
+      navigator.clipboard.writeText(text).then(() => {
+        showToast(message);
+      }).catch(() => {
+        // Fallback para navegadores sem permissão de clipboard
+        const input = document.createElement('input');
+        input.value = text;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand('copy');
+        document.body.removeChild(input);
+        showToast(message);
+      });
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.add('show');
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 2200);
+    }
+
+    async function runHealthChecks() {
+      showToast('Verificando conectividade dos endpoints...');
+      if (!appData) return;
+
+      for (const svc of appData.services) {
+        if (svc.is_external) continue;
+
+        const targetUrl = currentEnv === 'local' ? svc.local_url : svc.gcp_url;
+        if (targetUrl.includes('<PENDING>')) continue;
+
+        const checkPath = svc.health_path || '';
+        const urlToCheck = targetUrl.replace(/\/docs$|\/healthz$/, '') + checkPath;
+        const statusKey = `${svc.id}-${currentEnv}`;
+
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 2500);
+
+          // Ping com mode: no-cors para evitar rejeição do browser por políticas de mesmo domínio
+          await fetch(urlToCheck, { 
+            method: 'GET', 
+            mode: 'no-cors', 
+            signal: controller.signal 
+          });
+          clearTimeout(timeoutId);
+          healthStatus[statusKey] = 'online';
+        } catch (e) {
+          healthStatus[statusKey] = 'offline';
+        }
+      }
+
+      render(document.getElementById('search-input').value);
+      showToast('Verificação concluída!');
+    }
+
+    window.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
