@@ -47,6 +47,17 @@ jobs:
           STACK_MODE: ${{ github.event.inputs.stack_mode || 'simple' }}
         run: |
           set -euo pipefail
+          echo "🔐 Provisionando credenciais dinâmicas do OpenObserve no namespace observability..."
+          OO_EMAIL="admin@example.com"
+          OO_PASS="ComplexPassword123#"
+          OO_AUTH="Basic $(printf '%s:%s' "${OO_EMAIL}" "${OO_PASS}" | base64)"
+          kubectl create secret generic openobserve-credentials \
+            --namespace=observability \
+            --from-literal=auth_header="${OO_AUTH}" \
+            --from-literal=root_user_email="${OO_EMAIL}" \
+            --from-literal=root_user_password="${OO_PASS}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
           echo "🚀 Realizando deploy da observabilidade no modo: ${STACK_MODE}..."
           kubectl apply -f observability/openobserve.yaml
 

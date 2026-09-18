@@ -39,6 +39,16 @@ provision_workloads() {
     kubectl apply -f "${INFRA_DIR}/local/manifests/namespaces.yaml"
     kubectl apply -f "${INFRA_DIR}/local/manifests/metrics-server.yaml"
     kubectl apply -f "${INFRA_DIR}/local/manifests/pubsub-emulator.yaml"
+    echo "🔐 Provisionando credenciais locais do OpenObserve no namespace observability..."
+    OO_EMAIL="admin@example.com"
+    OO_PASS="${OPENOBSERVE_ROOT_PASSWORD:-ComplexPassword123#}"
+    OO_AUTH="Basic $(printf '%s:%s' "${OO_EMAIL}" "${OO_PASS}" | base64)"
+    kubectl create secret generic openobserve-credentials \
+        --namespace=observability \
+        --from-literal=auth_header="${OO_AUTH}" \
+        --from-literal=root_user_email="${OO_EMAIL}" \
+        --from-literal=root_user_password="${OO_PASS}" \
+        --dry-run=client -o yaml | kubectl apply -f -
     kubectl apply -f "${INFRA_DIR}/local/manifests/openobserve.yaml"
 
     if [ "${MODE}" = "distributed" ]; then

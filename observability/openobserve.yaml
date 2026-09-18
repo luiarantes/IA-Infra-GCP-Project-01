@@ -1,15 +1,4 @@
 apiVersion: v1
-kind: Secret
-metadata:
-  name: openobserve-credentials
-  namespace: observability
-type: Opaque
-stringData:
-  auth_header: "Basic YWRtaW5AZXhhbXBsZS5jb206Q29tcGxleFBhc3N3b3JkMTIzIw=="
-  root_user_email: "admin@example.com"
-  root_user_password: "ComplexPassword123#"
----
-apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: openobserve-data

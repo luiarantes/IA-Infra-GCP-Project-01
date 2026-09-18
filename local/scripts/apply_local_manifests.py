@@ -32,6 +32,24 @@ def main():
     with open(sa_path) as f:
         apply_yaml(f.read())
 
+    # OpenObserve credentials secret (gerado dinamicamente em runtime para evitar credenciais estáticas no repositório)
+    import base64
+    oo_email = "admin@example.com"
+    oo_pass = os.getenv("OPENOBSERVE_ROOT_PASSWORD", "ComplexPassword123#")
+    oo_auth = "Basic " + base64.b64encode(f"{oo_email}:{oo_pass}".encode("utf-8")).decode("utf-8")
+    oo_secret_yaml = f"""apiVersion: v1
+kind: Secret
+metadata:
+  name: openobserve-credentials
+  namespace: observability
+type: Opaque
+stringData:
+  auth_header: "{oo_auth}"
+  root_user_email: "{oo_email}"
+  root_user_password: "{oo_pass}"
+"""
+    apply_yaml(oo_secret_yaml)
+
     # OpenTelemetry Collector
     otel_col_path = INFRA_DIR / "observability" / "otel-collector.yaml"
     with open(otel_col_path) as f:
