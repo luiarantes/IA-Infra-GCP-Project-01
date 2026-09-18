@@ -8,6 +8,7 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 ## [Unreleased]
 
 ### Added
+- **control-panel**: Expansão do catálogo de ferramentas com novos cards para BuscaCEP Frontend Web, Gateway Swagger OpenAPI, ReDoc, Central de Alertas e Incidentes GCP, Google Cloud Trace, Cloud Storage Terraform State e IAM Workload Identity Federation.
 - **k6**: Integração nativa do k6 Web Dashboard (porta 5665) ao Painel de Controle AIOps, com status sob demanda e targets `make k6-ui` (dashboard interativo ao vivo no navegador) e `make k6-report` (exportação de relatório gráfico HTML).
 - **control-panel**: Painel de Controle e Hub de Observabilidade dinâmico e 100% autocontido (offline-first), com interface visual Dark Mode, catálogo de ferramentas, métricas, atalhos de console e monitoramento de conectividade sem dependência de CDNs externas.
 - **chaos-test**: Exposição nativa do Chaos Mesh Dashboard (porta 2333) sem necessidade de port-forward, configurado como `NodePort` no cluster local Kind e `LoadBalancer` (IP público) no GKE, com target `make chaos-ui` e integração direta no Painel de Controle.

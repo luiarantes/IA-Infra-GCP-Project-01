@@ -5,7 +5,7 @@ window.AIOPS_DATA = {
   "cluster_name": "aiops-gke",
   "cluster_location": "us-central1-a",
   "active_env": "local",
-  "last_synced_at": "2026-09-18T03:14:56.748092+00:00",
+  "last_synced_at": "2026-09-18T03:26:38.493392+00:00",
   "services": [
     {
       "id": "openobserve",
@@ -124,6 +124,46 @@ window.AIOPS_DATA = {
       "is_external": true
     },
     {
+      "id": "gcp_alerting",
+      "name": "Cloud Monitoring (Alertas & Incidentes)",
+      "category": "observability",
+      "category_name": "Observabilidade & APM",
+      "description": "Central de incidentes e 5 políticas de alerta em nuvem (Golden Signals: reinicializações, 5xx, saturação de CPU/RAM e latência).",
+      "icon": "bell",
+      "local_url": "https://console.cloud.google.com/monitoring/alerting?project=ia-infra-gcp-project-01",
+      "gcp_url": "https://console.cloud.google.com/monitoring/alerting?project=ia-infra-gcp-project-01",
+      "credentials": null,
+      "health_path": null,
+      "is_external": true
+    },
+    {
+      "id": "gcp_trace",
+      "name": "Google Cloud Trace",
+      "category": "observability",
+      "category_name": "Observabilidade & APM",
+      "description": "Visualizador de rastreamento distribuído (Distributed Tracing) em nuvem, correlacionado via CloudTraceSpanExporter.",
+      "icon": "shuffle",
+      "local_url": "https://console.cloud.google.com/traces/overview?project=ia-infra-gcp-project-01",
+      "gcp_url": "https://console.cloud.google.com/traces/overview?project=ia-infra-gcp-project-01",
+      "credentials": null,
+      "health_path": null,
+      "is_external": true
+    },
+    {
+      "id": "buscacep_web",
+      "name": "BuscaCEP (Aplicação Web)",
+      "category": "apps",
+      "category_name": "Aplicações & Microsserviços",
+      "description": "Interface web gráfica do usuário para consulta de CEPs em tempo real com mapa, formulário interativo e histórico.",
+      "icon": "globe",
+      "local_url": "http://localhost:8000/",
+      "local_port": 8000,
+      "gcp_url": "http://<PENDING>/",
+      "credentials": null,
+      "health_path": "/healthz",
+      "is_external": false
+    },
+    {
       "id": "buscacep_docs",
       "name": "BuscaCEP API (Swagger Docs)",
       "category": "apps",
@@ -138,6 +178,20 @@ window.AIOPS_DATA = {
       "is_external": false
     },
     {
+      "id": "buscacep_redoc",
+      "name": "BuscaCEP (ReDoc)",
+      "category": "apps",
+      "category_name": "Aplicações & Microsserviços",
+      "description": "Especificação formal e documentação técnica OpenAPI da API BuscaCEP no formato ReDoc.",
+      "icon": "file-text",
+      "local_url": "http://localhost:8000/redoc",
+      "local_port": 8000,
+      "gcp_url": "http://<PENDING>/redoc",
+      "credentials": null,
+      "health_path": "/healthz",
+      "is_external": false
+    },
+    {
       "id": "buscacep_health",
       "name": "BuscaCEP Healthz",
       "category": "apps",
@@ -147,6 +201,20 @@ window.AIOPS_DATA = {
       "local_url": "http://localhost:8000/healthz",
       "local_port": 8000,
       "gcp_url": "http://<PENDING>/healthz",
+      "credentials": null,
+      "health_path": "/healthz",
+      "is_external": false
+    },
+    {
+      "id": "gateway_docs",
+      "name": "Gateway API (Swagger Docs)",
+      "category": "apps",
+      "category_name": "Aplicações & Microsserviços",
+      "description": "Documentação interativa Swagger UI do Gateway de microsserviços para teste de rotas (/work e /api/cep).",
+      "icon": "code",
+      "local_url": "http://localhost:8080/docs",
+      "local_port": 8080,
+      "gcp_url": "http://<PENDING>:8080/docs",
       "credentials": null,
       "health_path": "/healthz",
       "is_external": false
@@ -231,6 +299,32 @@ window.AIOPS_DATA = {
       "icon": "dollar-sign",
       "local_url": "https://console.cloud.google.com/billing/012B38-2503FB-1D53DF?project=ia-infra-gcp-project-01",
       "gcp_url": "https://console.cloud.google.com/billing/012B38-2503FB-1D53DF?project=ia-infra-gcp-project-01",
+      "credentials": null,
+      "health_path": null,
+      "is_external": true
+    },
+    {
+      "id": "gcp_storage_tfstate",
+      "name": "Cloud Storage (Bucket State)",
+      "category": "gcp",
+      "category_name": "Plataforma GCP & FinOps",
+      "description": "Bucket de armazenamento de alta disponibilidade do estado remoto do Terraform (ia-infra-gcp-project-01-tfstate).",
+      "icon": "database",
+      "local_url": "https://console.cloud.google.com/storage/browser/ia-infra-gcp-project-01-tfstate?project=ia-infra-gcp-project-01",
+      "gcp_url": "https://console.cloud.google.com/storage/browser/ia-infra-gcp-project-01-tfstate?project=ia-infra-gcp-project-01",
+      "credentials": null,
+      "health_path": null,
+      "is_external": true
+    },
+    {
+      "id": "gcp_iam_workload_identity",
+      "name": "IAM & Workload Identity",
+      "category": "gcp",
+      "category_name": "Plataforma GCP & FinOps",
+      "description": "Painel de controle de identidades seguras Keyless OIDC, Service Accounts e federação com GitHub Actions.",
+      "icon": "shield",
+      "local_url": "https://console.cloud.google.com/iam-admin/iam?project=ia-infra-gcp-project-01",
+      "gcp_url": "https://console.cloud.google.com/iam-admin/iam?project=ia-infra-gcp-project-01",
       "credentials": null,
       "health_path": null,
       "is_external": true

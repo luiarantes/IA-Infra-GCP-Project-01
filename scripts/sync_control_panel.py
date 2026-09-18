@@ -176,8 +176,11 @@ def sync_panel(target_env=None, do_open=False, generate_summary=False):
         "openobserve": local_ports.get("openobserve", 5080),
         "grafana": local_ports.get("grafana", 3000),
         "pyroscope": local_ports.get("pyroscope", 4040),
+        "buscacep_web": local_ports.get("buscacep", 8000),
         "buscacep_docs": local_ports.get("buscacep", 8000),
+        "buscacep_redoc": local_ports.get("buscacep", 8000),
         "buscacep_health": local_ports.get("buscacep", 8000),
+        "gateway_docs": local_ports.get("gateway", 8080),
         "gateway": local_ports.get("gateway", 8080),
         "pubsub_emulator": local_ports.get("pubsub", 8085),
         "minio_console": local_ports.get("minio", 9001),
@@ -198,10 +201,16 @@ def sync_panel(target_env=None, do_open=False, generate_summary=False):
         if svc_id in port_mapping and not svc.get("is_external"):
             p = port_mapping[svc_id]
             svc["local_port"] = p
-            if svc_id == "buscacep_docs":
+            if svc_id == "buscacep_web":
+                svc["local_url"] = f"http://localhost:{p}/"
+            elif svc_id == "buscacep_docs":
                 svc["local_url"] = f"http://localhost:{p}/docs"
+            elif svc_id == "buscacep_redoc":
+                svc["local_url"] = f"http://localhost:{p}/redoc"
             elif svc_id == "buscacep_health":
                 svc["local_url"] = f"http://localhost:{p}/healthz"
+            elif svc_id == "gateway_docs":
+                svc["local_url"] = f"http://localhost:{p}/docs"
             elif svc_id == "gateway":
                 svc["local_url"] = f"http://localhost:{p}/healthz"
             else:
@@ -209,18 +218,26 @@ def sync_panel(target_env=None, do_open=False, generate_summary=False):
 
         # Atualiza URL do GCP com IPs reais
         if active_env == "gcp" and not svc.get("is_external"):
-            if svc_id in ["buscacep_docs", "buscacep_health"]:
+            if svc_id in ["buscacep_web", "buscacep_docs", "buscacep_redoc", "buscacep_health"]:
                 lb = gcp_lbs.get("buscacep-api")
                 if lb:
                     ip = lb["ip"]
-                    suffix = "/docs" if svc_id == "buscacep_docs" else "/healthz"
+                    if svc_id == "buscacep_web":
+                        suffix = "/"
+                    elif svc_id == "buscacep_docs":
+                        suffix = "/docs"
+                    elif svc_id == "buscacep_redoc":
+                        suffix = "/redoc"
+                    else:
+                        suffix = "/healthz"
                     svc["gcp_url"] = f"http://{ip}{suffix}" if ip != "<PENDING>" else f"http://<PENDING>{suffix}"
-            elif svc_id == "gateway":
+            elif svc_id in ["gateway", "gateway_docs"]:
                 lb = gcp_lbs.get("gateway")
                 if lb:
                     ip = lb["ip"]
                     port_str = f":{lb['port']}" if lb['port'] != 80 else ""
-                    svc["gcp_url"] = f"http://{ip}{port_str}/healthz" if ip != "<PENDING>" else f"http://<PENDING>:8080/healthz"
+                    suffix = "/docs" if svc_id == "gateway_docs" else "/healthz"
+                    svc["gcp_url"] = f"http://{ip}{port_str}{suffix}" if ip != "<PENDING>" else f"http://<PENDING>:8080{suffix}"
             elif svc_id == "openobserve":
                 lb = gcp_lbs.get("openobserve")
                 if lb:
