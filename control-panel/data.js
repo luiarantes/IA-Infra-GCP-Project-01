@@ -5,7 +5,7 @@ window.AIOPS_DATA = {
   "cluster_name": "aiops-gke",
   "cluster_location": "us-central1-a",
   "active_env": "local",
-  "last_synced_at": "2026-09-18T03:26:38.493392+00:00",
+  "last_synced_at": "2026-09-18T04:44:53.701084+00:00",
   "services": [
     {
       "id": "openobserve",
