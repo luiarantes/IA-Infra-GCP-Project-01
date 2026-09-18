@@ -68,7 +68,7 @@ jobs:
           set -e
           echo "🤖 [AIOps Evaluator]: Iniciando auditoria autônoma de resiliência com Ollama GPU no GKE..."
 
-          kubectl port-forward svc/ollama 11434:11434 -n default > /tmp/pf-ollama-eval.log 2>&1 &
+          kubectl port-forward svc/ollama 11434:11434 -n observability > /tmp/pf-ollama-eval.log 2>&1 &
           PF_OLLAMA=$!
           trap "kill $PF_OLLAMA 2>/dev/null || true" EXIT
 

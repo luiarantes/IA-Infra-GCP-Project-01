@@ -2,7 +2,7 @@ apiVersion: chaos-mesh.org/v1alpha1
 kind: HTTPChaos
 metadata:
   name: cascading-5xx
-  namespace: default
+  namespace: apps
   labels:
     aiops.lab/chaos: "true"
     aiops.lab/scenario: "cascading-5xx"
@@ -10,7 +10,7 @@ spec:
   mode: all
   selector:
     namespaces:
-      - default
+      - apps
     labelSelectors:
       app: service-downstream
   target: Request

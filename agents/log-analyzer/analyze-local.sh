@@ -22,7 +22,7 @@ FOUND=false
 SIGNALS=""
 
 # 1. Checagem de Restarts de Pods
-RESTARTS=$(kubectl get pods -n default -o jsonpath='{range .items[*]}{.metadata.name}{": "}{range .status.containerStatuses[*]}{.restartCount}{" "}{end}{"\n"}{end}' | awk '{for(i=2;i<=NF;i++) if($i>0) sum+=$i} END {print sum+0}')
+RESTARTS=$(kubectl get pods -n apps -o jsonpath='{range .items[*]}{.metadata.name}{": "}{range .status.containerStatuses[*]}{.restartCount}{" "}{end}{"\n"}{end}' | awk '{for(i=2;i<=NF;i++) if($i>0) sum+=$i} END {print sum+0}')
 echo "📊 Restarts acumulados nos pods: ${RESTARTS:-0}"
 if [ "${RESTARTS:-0}" -gt 0 ]; then
     FOUND=true
@@ -30,7 +30,7 @@ if [ "${RESTARTS:-0}" -gt 0 ]; then
 fi
 
 # 2. Checagem de Pods em estado anômalo (CrashLoopBackOff, Error, OOMKilled)
-ANOMALOUS_PODS=$(kubectl get pods -n default --no-headers | grep -E 'CrashLoopBackOff|Error|OOMKilled' | awk '{print $1}' || true)
+ANOMALOUS_PODS=$(kubectl get pods -n apps --no-headers | grep -E 'CrashLoopBackOff|Error|OOMKilled' | awk '{print $1}' || true)
 if [ -n "$ANOMALOUS_PODS" ]; then
     echo "⚠️ Pods em estado anômalo detectados: $ANOMALOUS_PODS"
     FOUND=true
@@ -52,7 +52,7 @@ fi
 # 4. Checagem de Logs de Erro/Panic recentes no Loki
 LOKI_URL="${AIOPS_LOKI_URL:-http://localhost:3100}"
 LOKI_ERRORS=$(curl -s -G "${LOKI_URL}/loki/api/v1/query_range" \
-    --data-urlencode 'query={namespace="default"} |= "error" or {namespace="default"} |= "panic"' \
+    --data-urlencode 'query={namespace="apps"} |= "error" or {namespace="apps"} |= "panic"' \
     --data-urlencode 'limit=10' 2>/dev/null \
     | jq '.data.result | length' 2>/dev/null || echo "0")
 

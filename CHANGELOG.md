@@ -8,6 +8,7 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 ## [Unreleased]
 
 ### Added
+- **k8s**: Declaração explícita e isolamento de namespaces dedicados (`apps`, `observability` e `infra`) em `local/manifests/namespaces.yaml`, eliminando o uso do namespace `default`.
 - **control-panel**: Expansão do catálogo de ferramentas com novos cards para BuscaCEP Frontend Web, Gateway Swagger OpenAPI, ReDoc, Central de Alertas e Incidentes GCP, Google Cloud Trace, Cloud Storage Terraform State e IAM Workload Identity Federation.
 - **k6**: Integração nativa do k6 Web Dashboard (porta 5665) ao Painel de Controle AIOps, com status sob demanda e targets `make k6-ui` (dashboard interativo ao vivo no navegador) e `make k6-report` (exportação de relatório gráfico HTML).
 - **control-panel**: Painel de Controle e Hub de Observabilidade dinâmico e 100% autocontido (offline-first), com interface visual Dark Mode, catálogo de ferramentas, métricas, atalhos de console e monitoramento de conectividade sem dependência de CDNs externas.
@@ -20,6 +21,13 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 - **local**: Ajuste de serviços `LoadBalancer` para `ClusterIP` em tempo de execução local, eliminando status `<pending>` e conflito com a porta `30901` do MinIO.
 
 ### Changed
+- **k8s**: Migração completa dos workloads de aplicação (`gateway`, `service-api`, `service-worker`, `service-downstream`, `podinfo`, `buscacep`) para o namespace `apps`.
+- **observability**: Migração da stack LGTM, OpenObserve, OTel Collector, Beyla e Ollama para o namespace `observability`, com reconfiguração de endpoints e exporters via FQDN entre namespaces (`minio.infra:9000`, `otel-collector.observability:4318`, `loki.observability:3100`, `tempo.observability:3200`, `pyroscope.observability:4040`).
+- **infra**: Migração dos serviços de suporte (`pubsub-emulator` e `minio`) para o namespace `infra`.
+- **terraform**: Atualização dos bindings de Workload Identity Federation (WIF) para `apps/microservices-ksa`, `apps/microservices-trace-ksa`, `apps/buscacep-ksa`, `observability/loki` e `observability/tempo`, e ajuste de filtros das alert policies para `resource.labels.namespace_name="apps"`.
+- **chaos-test**: Atualização dos experimentos Chaos Mesh (`PodChaos`, `StressChaos`, `NetworkChaos`, `HTTPChaos`) e Chaos Toolkit para atuarem estritamente sobre o namespace `apps`, incluindo RBAC e ConfigMaps no escopo correto.
+- **agents**: Ajuste dos agentes autônomos (`log-analyzer`, `pr-creator`, `verify-fix`, `evaluator`) para leitura determinística de métricas e pods no namespace `apps`, e port-forwards da telemetria no namespace `observability`.
+- **ci/cd**: Atualização dos workflows de deploy, carga e validação no GitHub Actions com criação idempotente e rollouts direcionados aos namespaces `apps` e `observability`.
 - **local**: Otimização do bootstrap do cluster local com carregamento em lote de imagens Docker (`kind load docker-image`) e compilação do `agent-runner` sob demanda, reduzindo o tempo de subida para ~1m 05s.
 
 ## [0.5.0] - 2026-09-17

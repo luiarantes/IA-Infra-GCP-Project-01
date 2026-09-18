@@ -35,11 +35,11 @@ jobs:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
 
       - name: Recriar o Job (Jobs sao imutaveis, precisa apagar o antigo)
-        run: kubectl delete job k6-load-test --ignore-not-found
+        run: kubectl delete job k6-load-test -n apps --ignore-not-found
 
       - name: Gerar o ConfigMap a partir do script.js atual
         run: |
-          kubectl create configmap k6-script \
+          kubectl create configmap k6-script -n apps \
             --from-file=script.js=load-test/script.js \
             --dry-run=client -o yaml | kubectl apply -f -
 
@@ -51,20 +51,20 @@ jobs:
           set -uo pipefail
           for i in $(seq 1 20); do
             echo "=== $(date -u +%H:%M:%S) ==="
-            kubectl get hpa
-            kubectl top pods --sort-by=cpu 2>/dev/null || true
+            kubectl get hpa -n apps
+            kubectl top pods -n apps --sort-by=cpu 2>/dev/null || true
             sleep 15
           done &
           MONITOR_PID=$!
-          kubectl wait --for=condition=complete job/k6-load-test --timeout=420s || \
-            kubectl wait --for=condition=failed job/k6-load-test --timeout=10s || true
+          kubectl wait --for=condition=complete job/k6-load-test -n apps --timeout=420s || \
+            kubectl wait --for=condition=failed job/k6-load-test -n apps --timeout=10s || true
           kill "$MONITOR_PID" 2>/dev/null || true
           wait "$MONITOR_PID" 2>/dev/null || true
 
       - name: Resumo do k6
         if: always()
-        run: kubectl logs job/k6-load-test
+        run: kubectl logs job/k6-load-test -n apps
 
       - name: Estado final do HPA
         if: always()
-        run: kubectl get hpa
+        run: kubectl get hpa -n apps

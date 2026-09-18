@@ -6,8 +6,8 @@ export const options = {
   duration: "4h", // Gera tráfego contínuo e suave por até 4 horas
 };
 
-const GATEWAY_URL = __ENV.GATEWAY_URL || "http://gateway:8080";
-const BUSCACEP_URL = __ENV.BUSCACEP_URL || "http://buscacep-api:80";
+const GATEWAY_URL = __ENV.GATEWAY_URL || "http://gateway.apps:8080";
+const BUSCACEP_URL = __ENV.BUSCACEP_URL || "http://buscacep-api.apps:80";
 
 
 const CEPS = ["01310-100", "01001-000", "20040-002", "70040-010", "30130-000"];

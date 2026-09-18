@@ -109,18 +109,18 @@ jobs:
         run: |
           SCENARIO_NAME="${{ inputs.scenario }}"
           if [ "$SCENARIO_NAME" = "random" ]; then SCENARIO_NAME="kill-gateway"; fi
-          kubectl create configmap chaos-experiment \
+          kubectl create configmap chaos-experiment -n apps \
             --from-file=experiment.json="chaos-test/experiment-${SCENARIO_NAME}.json" \
             --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Recriar o Job do Chaos Toolkit
         if: inputs.engine == 'chaos-toolkit' || inputs.scenario == 'kill-gateway' || inputs.scenario == 'kill-worker-mid-message'
         run: |
-          kubectl delete job chaos-test --ignore-not-found
+          kubectl delete job chaos-test -n apps --ignore-not-found
           kubectl apply -f chaos-test/job.yaml
-          kubectl wait --for=condition=complete job/chaos-test --timeout=180s || \
-            kubectl wait --for=condition=failed job/chaos-test --timeout=10s || true
-          kubectl logs job/chaos-test
+          kubectl wait --for=condition=complete job/chaos-test -n apps --timeout=180s || \
+            kubectl wait --for=condition=failed job/chaos-test -n apps --timeout=10s || true
+          kubectl logs job/chaos-test -n apps
 
       # -----------------------------------------------------------------------
       # Telemetria pós-experimento
@@ -128,12 +128,12 @@ jobs:
       - name: Estado dos pods pós-injeção
         if: always()
         run: |
-          echo "=== PODS STATUS (DEFAULT) ==="
-          kubectl get pods -n default -o wide
+          echo "=== PODS STATUS (APPS) ==="
+          kubectl get pods -n apps -o wide
           echo ""
           if kubectl get ns chaos-mesh >/dev/null 2>&1; then
             echo "=== EXPERIMENTOS CHAOS MESH ATIVOS ==="
-            kubectl get networkchaos,httpchaos,stresschaos,podchaos -n default || true
+            kubectl get networkchaos,httpchaos,stresschaos,podchaos -n apps || true
           fi
 
       - name: Sincronizar Painel de Controle AIOps

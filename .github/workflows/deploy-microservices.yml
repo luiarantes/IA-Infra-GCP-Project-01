@@ -51,6 +51,9 @@ jobs:
           location: ${{ env.CLUSTER_LOCATION }}
           project_id: ${{ secrets.GCP_PROJECT_ID }}
 
+      - name: Garantir namespace apps
+        run: kubectl create namespace apps --dry-run=client -o yaml | kubectl apply -f -
+
       - name: Deploy da ServiceAccount compartilhada (Workload Identity)
         env:
           PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
@@ -73,5 +76,5 @@ jobs:
         run: |
           set -euo pipefail
           for SERVICE in gateway service-api service-worker service-downstream; do
-            kubectl rollout status "deployment/${SERVICE}" --timeout=180s
+            kubectl rollout status "deployment/${SERVICE}" -n apps --timeout=180s
           done

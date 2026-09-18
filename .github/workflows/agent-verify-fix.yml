@@ -101,7 +101,7 @@ jobs:
 
           check_classic_metric() {
             local metric_type="$1" aligner="$2"
-            local filter="resource.type=\"k8s_container\" AND resource.labels.cluster_name=\"${CLUSTER_NAME}\" AND resource.labels.namespace_name=\"default\"${POD_FILTER} AND metric.type=\"${metric_type}\""
+            local filter="resource.type=\"k8s_container\" AND resource.labels.cluster_name=\"${CLUSTER_NAME}\" AND resource.labels.namespace_name=\"apps\"${POD_FILTER} AND metric.type=\"${metric_type}\""
             curl -s -G -H "Authorization: Bearer ${TOKEN}" \
               --data-urlencode "filter=${filter}" \
               --data-urlencode "interval.startTime=${START}" \
@@ -179,7 +179,7 @@ jobs:
           LABEL="${{ steps.check.outputs.label }}"
           VALUE="${{ steps.check.outputs.value }}"
           APP="${{ steps.extract.outputs.app }}"
-          ESCOPO="${APP:-todo o namespace default (sem label 'app:' no PR, fallback generico)}"
+          ESCOPO="${APP:-todo o namespace apps (sem label 'app:' no PR, fallback generico)}"
           if [ "${{ steps.check.outputs.still_bad }}" = "false" ]; then
             gh issue comment "$ISSUE" --body "**Verificação automática pós-merge**: ${LABEL} = ${VALUE} nos 5 minutos após o deploy do PR #${PR} (escopo: ${ESCOPO}) — dentro do esperado. A correção parece ter resolvido o problema."
           else

@@ -6,6 +6,7 @@ apiVersion: monitoring.googleapis.com/v1
 kind: PodMonitoring
 metadata:
   name: podinfo
+  namespace: apps
 spec:
   selector:
     matchLabels:

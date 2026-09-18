@@ -2,7 +2,7 @@ apiVersion: chaos-mesh.org/v1alpha1
 kind: StressChaos
 metadata:
   name: cpu-throttling
-  namespace: default
+  namespace: apps
   labels:
     aiops.lab/chaos: "true"
     aiops.lab/scenario: "cpu-throttling"
@@ -10,7 +10,7 @@ spec:
   mode: one
   selector:
     namespaces:
-      - default
+      - apps
     labelSelectors:
       app: service-api
   stressors:

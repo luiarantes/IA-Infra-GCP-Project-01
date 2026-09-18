@@ -8,6 +8,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: service-worker
+  namespace: apps
   labels:
     app: service-worker
 spec:
@@ -33,11 +34,11 @@ spec:
             - name: PUBSUB_SUBSCRIPTION
               value: "microservices-queue-worker-pull"
             - name: SERVICE_DOWNSTREAM_URL
-              value: "http://service-downstream:8080"
+              value: "http://service-downstream.apps:8080"
             - name: OTEL_EXPORTER_OTLP_LOGS_ENDPOINT
-              value: "http://otel-collector:4318/v1/logs"
+              value: "http://otel-collector.observability:4318/v1/logs"
             - name: PYROSCOPE_SERVER_ADDRESS
-              value: "http://pyroscope:4040"
+              value: "http://pyroscope.observability:4040"
           # GKE Autopilot exige requests explicitos em todo pod
           resources:
             requests:

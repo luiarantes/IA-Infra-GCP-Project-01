@@ -38,6 +38,9 @@ jobs:
           location: ${{ env.CLUSTER_LOCATION }}
           project_id: ${{ secrets.GCP_PROJECT_ID }}
 
+      - name: Garantir namespace observability
+        run: kubectl create namespace observability --dry-run=client -o yaml | kubectl apply -f -
+
       - name: Deploy da Stack de Observabilidade (OpenObserve + Grafana Labs LGTM + OTel Collector)
         env:
           PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
@@ -49,8 +52,8 @@ jobs:
 
           if [ "${STACK_MODE}" = "distributed" ]; then
             echo "🧹 Removendo instâncias e configurações anteriores do modo simples para migração limpa de storage..."
-            kubectl delete deployment loki tempo --ignore-not-found
-            kubectl delete configmap loki-config tempo-config --ignore-not-found
+            kubectl delete deployment loki tempo -n observability --ignore-not-found
+            kubectl delete configmap loki-config tempo-config -n observability --ignore-not-found
             echo "📦 Aplicando Loki e Tempo configurados com Google Cloud Storage (GCS)..."
             envsubst '${PROJECT_ID}' < observability/distributed/loki-distributed.yaml | kubectl apply -f -
             envsubst '${PROJECT_ID}' < observability/distributed/tempo-distributed.yaml | kubectl apply -f -
@@ -77,28 +80,28 @@ jobs:
       - name: Aguardar Rollout dos Serviços de Observabilidade
         run: |
           set -euo pipefail
-          kubectl rollout status deployment/openobserve --timeout=180s
-          kubectl rollout status deployment/tempo --timeout=180s
-          kubectl rollout status deployment/loki --timeout=180s
-          kubectl rollout status deployment/pyroscope --timeout=180s
-          kubectl rollout status deployment/grafana --timeout=180s
-          kubectl rollout status daemonset/beyla --timeout=300s || true
-          kubectl rollout status deployment/otel-collector --timeout=180s
-          kubectl rollout status deployment/ollama --timeout=180s || true
+          kubectl rollout status deployment/openobserve -n observability --timeout=180s
+          kubectl rollout status deployment/tempo -n observability --timeout=180s
+          kubectl rollout status deployment/loki -n observability --timeout=180s
+          kubectl rollout status deployment/pyroscope -n observability --timeout=180s
+          kubectl rollout status deployment/grafana -n observability --timeout=180s
+          kubectl rollout status daemonset/beyla -n observability --timeout=300s || true
+          kubectl rollout status deployment/otel-collector -n observability --timeout=180s
+          kubectl rollout status deployment/ollama -n observability --timeout=180s || true
 
       - name: Diagnóstico de Falha no Rollout
         if: failure()
         run: |
           echo "=== PODS STATUS ==="
-          kubectl get pods -o wide
+          kubectl get pods -n observability -o wide
           echo "=== TEMPO POD LOGS ==="
-          kubectl logs deployment/tempo --tail=100 || true
+          kubectl logs deployment/tempo -n observability --tail=100 || true
           echo "=== TEMPO POD DESCRIBE ==="
-          kubectl describe pod -l app=tempo || true
+          kubectl describe pod -l app=tempo -n observability || true
           echo "=== LOKI POD LOGS ==="
-          kubectl logs deployment/loki --tail=100 || true
+          kubectl logs deployment/loki -n observability --tail=100 || true
           echo "=== LOKI POD DESCRIBE ==="
-          kubectl describe pod -l app=loki || true
+          kubectl describe pod -l app=loki -n observability || true
 
 
       - name: Exibir IPs de Acesso Público (OpenObserve e Grafana)
@@ -108,10 +111,10 @@ jobs:
           GRAFANA_IP=""
           for i in {1..30}; do
             if [ -z "$OO_IP" ]; then
-              OO_IP=$(kubectl get svc openobserve -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)
+              OO_IP=$(kubectl get svc openobserve -n observability -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)
             fi
             if [ -z "$GRAFANA_IP" ]; then
-              GRAFANA_IP=$(kubectl get svc grafana -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)
+              GRAFANA_IP=$(kubectl get svc grafana -n observability -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)
             fi
             if [ -n "$OO_IP" ] && [ -n "$GRAFANA_IP" ]; then
               break

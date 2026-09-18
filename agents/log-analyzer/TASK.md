@@ -26,14 +26,14 @@ precisa checar tudo se só uma categoria foi sinalizada.
 
 ## Sua tarefa
 
-1. Rode `kubectl get pods -o wide` para ver o estado atual dos pods.
+1. Rode `kubectl get pods -o wide -n apps` para ver o estado atual dos pods.
 
-2. **Se o sinal foi `restart_count`**: rode `kubectl describe pod <nome>`
-   e `kubectl logs <nome> --previous` para entender o que aconteceu antes
+2. **Se o sinal foi `restart_count`**: rode `kubectl describe pod <nome> -n apps`
+   e `kubectl logs <nome> -n apps --previous` para entender o que aconteceu antes
    do container morrer.
 
-3. **Se o sinal foi `cpu` ou `memory`**: rode `kubectl top pod` para ver
-   uso atual, e `kubectl describe pod <nome>` para conferir os
+3. **Se o sinal foi `cpu` ou `memory`**: rode `kubectl top pod -n apps` para ver
+   uso atual, e `kubectl describe pod <nome> -n apps` para conferir os
    `resources.requests`/`limits` configurados. Avalie se o limite está
    genuinamente baixo demais para a carga, ou se há algo anômalo gerando
    a carga (ex: um loop, muitas requisições).
@@ -43,16 +43,16 @@ precisa checar tudo se só uma categoria foi sinalizada.
    sem precisar de nenhuma ferramenta nova. Primeiro descubra a porta
    que o container expõe:
    ```
-   kubectl get pod <nome-do-pod> -o jsonpath='{.spec.containers[0].ports[0].containerPort}'
+   kubectl get pod <nome-do-pod> -n apps -o jsonpath='{.spec.containers[0].ports[0].containerPort}'
    ```
    Depois:
    ```
-   kubectl get --raw "/api/v1/namespaces/default/pods/<nome-do-pod>:<porta>/proxy/metrics"
+   kubectl get --raw "/api/v1/namespaces/apps/pods/<nome-do-pod>:<porta>/proxy/metrics"
    ```
    Isso devolve o `/metrics` do app em formato Prometheus — procure por
    `http_requests_total` (labels de status) e
    `http_request_duration_seconds_bucket` (latência). Também vale
-   `kubectl logs <nome>` para ver se as requisições com erro aparecem
+   `kubectl logs <nome> -n apps` para ver se as requisições com erro aparecem
    registradas.
 
 5. Se precisar de mais contexto histórico de logs, use `gcloud logging

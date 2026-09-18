@@ -15,7 +15,7 @@
           "module": "chaosk8s.pod.probes",
           "func": "pods_in_phase",
           "arguments": {
-            "ns": "default",
+            "ns": "apps",
             "label_selector": "app=service-worker",
             "phase": "Running"
           }
@@ -29,7 +29,7 @@
       "name": "publish-work-via-gateway",
       "provider": {
         "type": "http",
-        "url": "http://gateway.default.svc.cluster.local:8080/work",
+        "url": "http://gateway.apps.svc.cluster.local:8080/work",
         "method": "POST",
         "headers": { "Content-Type": "application/json" },
         "arguments": { "source": "chaos-toolkit" },
@@ -44,7 +44,7 @@
         "module": "chaosk8s.pod.actions",
         "func": "terminate_pods",
         "arguments": {
-          "ns": "default",
+          "ns": "apps",
           "label_selector": "app=service-worker",
           "rand": false
         }

@@ -50,15 +50,15 @@ resource "google_storage_bucket_iam_member" "tempo_storage" {
   member = "serviceAccount:${google_service_account.grafana_storage.email}"
 }
 
-# Workload Identity: permite que as KSAs default/loki e default/tempo assumam a GSA
+# Workload Identity: permite que as KSAs observability/loki e observability/tempo assumam a GSA
 resource "google_service_account_iam_member" "loki_workload_identity" {
   service_account_id = google_service_account.grafana_storage.name
   role               = "roles/iam.workloadIdentityUser"
-  member             = "serviceAccount:${var.project_id}.svc.id.goog[default/loki]"
+  member             = "serviceAccount:${var.project_id}.svc.id.goog[observability/loki]"
 }
 
 resource "google_service_account_iam_member" "tempo_workload_identity" {
   service_account_id = google_service_account.grafana_storage.name
   role               = "roles/iam.workloadIdentityUser"
-  member             = "serviceAccount:${var.project_id}.svc.id.goog[default/tempo]"
+  member             = "serviceAccount:${var.project_id}.svc.id.goog[observability/tempo]"
 }

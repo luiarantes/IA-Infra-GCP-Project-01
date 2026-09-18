@@ -94,7 +94,7 @@ jobs:
           check_classic_metric() {
             local metric_type="$1"
             local aligner="$2"
-            local filter="resource.type=\"k8s_container\" AND resource.labels.cluster_name=\"${CLUSTER_NAME}\" AND resource.labels.namespace_name=\"default\" AND resource.labels.pod_name=monitoring.regex.full_match(\"${KNOWN_APPS_REGEX}\") AND metric.type=\"${metric_type}\""
+            local filter="resource.type=\"k8s_container\" AND resource.labels.cluster_name=\"${CLUSTER_NAME}\" AND resource.labels.namespace_name=\"apps\" AND resource.labels.pod_name=monitoring.regex.full_match(\"${KNOWN_APPS_REGEX}\") AND metric.type=\"${metric_type}\""
             curl -s -G -H "Authorization: Bearer ${TOKEN}" \
               --data-urlencode "filter=${filter}" \
               --data-urlencode "interval.startTime=${START}" \
@@ -167,11 +167,11 @@ jobs:
           echo "🤖 [AIOps Privado]: Iniciando investigação com Modelo Local no GKE (Zero Data Export)..."
 
           # Port-forwards para comunicação interna com os serviços do GKE
-          kubectl port-forward svc/ollama 11434:11434 -n default > /tmp/pf-ollama.log 2>&1 &
+          kubectl port-forward svc/ollama 11434:11434 -n observability > /tmp/pf-ollama.log 2>&1 &
           PF_OLLAMA=$!
-          kubectl port-forward svc/openobserve 5080:5080 -n default > /tmp/pf-oo.log 2>&1 &
+          kubectl port-forward svc/openobserve 5080:5080 -n observability > /tmp/pf-oo.log 2>&1 &
           PF_OO=$!
-          kubectl port-forward svc/loki 3100:3100 -n default > /tmp/pf-loki.log 2>&1 &
+          kubectl port-forward svc/loki 3100:3100 -n observability > /tmp/pf-loki.log 2>&1 &
           PF_LOKI=$!
 
           trap "kill $PF_OLLAMA $PF_OO $PF_LOKI 2>/dev/null || true" EXIT

@@ -37,11 +37,14 @@ jobs:
           location: ${{ env.CLUSTER_LOCATION }}
           project_id: ${{ secrets.GCP_PROJECT_ID }}
 
+      - name: Garantir namespace apps
+        run: kubectl create namespace apps --dry-run=client -o yaml | kubectl apply -f -
+
       - name: Deploy manifests do app
         run: kubectl apply -f apps/sample-app/
 
       - name: Aguardar rollout
-        run: kubectl rollout status deployment/podinfo --timeout=180s
+        run: kubectl rollout status deployment/podinfo -n apps --timeout=180s
 
       - name: Deploy manifests de observabilidade
         run: kubectl apply -f observability/podmonitoring.yaml

@@ -30,15 +30,15 @@ echo "🚀 Sincronizando manifestos no cluster local (Kind)..."
 python3 "${WORKSPACE_DIR}/local/scripts/apply_local_manifests.py"
 
 echo "⏳ Aguardando rollout dos deployments afetados..."
-for dep in $(kubectl get deployments -n default -o jsonpath='{.items[*].metadata.name}'); do
-    kubectl rollout status "deployment/${dep}" -n default --timeout=90s || true
+for dep in $(kubectl get deployments -n apps -o jsonpath='{.items[*].metadata.name}'); do
+    kubectl rollout status "deployment/${dep}" -n apps --timeout=90s || true
 done
 
 echo "⏳ Aguardando janela de estabilização de 15 segundos..."
 sleep 15
 
 echo "🔍 Reconsultando sinais de telemetria..."
-UNHEALTHY_PODS=$(kubectl get pods -n default --no-headers | grep -E 'CrashLoopBackOff|Error|OOMKilled|InvalidImageName' || true)
+UNHEALTHY_PODS=$(kubectl get pods -n apps --no-headers | grep -E 'CrashLoopBackOff|Error|OOMKilled|InvalidImageName' || true)
 
 if [ -z "$UNHEALTHY_PODS" ]; then
     echo "🎉 SUCESSO: Todos os pods estão operando com 100% de integridade (1/1 Running)!"

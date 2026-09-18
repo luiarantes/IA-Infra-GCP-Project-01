@@ -15,7 +15,7 @@
           "module": "chaosk8s.pod.probes",
           "func": "pods_in_phase",
           "arguments": {
-            "ns": "default",
+            "ns": "apps",
             "label_selector": "app=gateway",
             "phase": "Running"
           }
@@ -32,7 +32,7 @@
         "module": "chaosk8s.pod.actions",
         "func": "terminate_pods",
         "arguments": {
-          "ns": "default",
+          "ns": "apps",
           "label_selector": "app=gateway",
           "rand": false
         }

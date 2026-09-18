@@ -82,6 +82,7 @@ module "observability_podinfo" {
 
   project_id     = var.project_id
   cluster_name   = var.cluster_name
+  namespace      = "apps"
   app_label      = "podinfo"
   pod_name_regex = "podinfo-.*"
 
@@ -93,6 +94,7 @@ module "observability_microservices" {
 
   project_id          = var.project_id
   cluster_name        = var.cluster_name
+  namespace           = "apps"
   app_label           = "microservices"
   pod_name_regex      = "(gateway|service-api|service-worker|service-downstream)-.*"
   enable_http_metrics = false
@@ -111,7 +113,7 @@ module "microservices_workload_identity" {
   project_id     = var.project_id
   gsa_account_id = "microservices-workload"
   ksa_name       = "microservices-ksa"
-  namespace      = "default"
+  namespace      = "apps"
   roles = [
     "roles/pubsub.publisher",
     "roles/pubsub.subscriber",
@@ -132,7 +134,7 @@ module "microservices_trace_workload_identity" {
   project_id     = var.project_id
   gsa_account_id = "microservices-trace"
   ksa_name       = "microservices-trace-ksa"
-  namespace      = "default"
+  namespace      = "apps"
   roles = [
     "roles/cloudtrace.agent",
   ]
@@ -152,7 +154,7 @@ module "buscacep_workload_identity" {
   project_id     = var.project_id
   gsa_account_id = "buscacep-workload"
   ksa_name       = "buscacep-ksa"
-  namespace      = "default"
+  namespace      = "apps"
   roles = [
     "roles/pubsub.publisher",
     "roles/pubsub.subscriber",
@@ -229,6 +231,7 @@ module "observability_buscacep" {
 
   project_id     = var.project_id
   cluster_name   = var.cluster_name
+  namespace      = "apps"
   app_label      = "buscacep-api"
   pod_name_regex = "buscacep-api-.*"
 

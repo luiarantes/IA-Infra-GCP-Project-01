@@ -23,12 +23,12 @@ case "$SCENARIO" in
         echo "Alterando liveness probe para path inexistente '/healthz-invalid' na porta 8000..."
         
         # Patch direto no deployment em execução
-        kubectl patch deployment service-api --type='json' -p='[{"op": "replace", "path": "/spec/template/spec/containers/0/livenessProbe/httpGet/path", "value": "/healthz-invalid"},{"op": "replace", "path": "/spec/template/spec/containers/0/livenessProbe/periodSeconds", "value": 5}]'
+        kubectl patch deployment service-api -n apps --type='json' -p='[{"op": "replace", "path": "/spec/template/spec/containers/0/livenessProbe/httpGet/path", "value": "/healthz-invalid"},{"op": "replace", "path": "/spec/template/spec/containers/0/livenessProbe/periodSeconds", "value": 5}]'
         
         echo "⏳ Aguardando Kubelet detectar falha de probe e reiniciar container..."
         sleep 20
         echo "📊 Estado atual do pod:"
-        kubectl get pods -l app=service-api -n default
+        kubectl get pods -l app=service-api -n apps
         ;;
 
     oom-kill)
@@ -38,19 +38,19 @@ case "$SCENARIO" in
         sed -i '' 's/memory: 256Mi/memory: 16Mi/g' "${WORKSPACE_DIR}/apps/service-api/deployment.yaml"
         sed -i '' 's/memory: 128Mi/memory: 16Mi/g' "${WORKSPACE_DIR}/apps/service-api/deployment.yaml"
         
-        kubectl set resources deployment/service-api --limits=memory=16Mi,cpu=200m --requests=memory=16Mi,cpu=100m
+        kubectl set resources deployment/service-api -n apps --limits=memory=16Mi,cpu=200m --requests=memory=16Mi,cpu=100m
         
         echo "⏳ Aguardando container ser morto pelo OOM Killer (Exit Code 137)..."
         sleep 20
         echo "📊 Estado atual do pod:"
-        kubectl get pods -l app=service-api -n default
+        kubectl get pods -l app=service-api -n apps
         ;;
 
     restore)
         echo "🧹 Restaurando deployment 'service-api' para a configuração original saudável..."
         git checkout -- "${WORKSPACE_DIR}/apps/service-api/deployment.yaml"
         python3 "${WORKSPACE_DIR}/local/scripts/apply_local_manifests.py"
-        kubectl rollout status deployment/service-api --timeout=60s
+        kubectl rollout status deployment/service-api -n apps --timeout=60s
         echo "✅ 'service-api' restaurado com sucesso!"
         ;;
 

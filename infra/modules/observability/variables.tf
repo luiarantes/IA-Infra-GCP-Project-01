@@ -9,7 +9,7 @@ variable "cluster_name" {
 variable "namespace" {
   description = "Namespace Kubernetes onde o app roda"
   type        = string
-  default     = "default"
+  default     = "apps"
 }
 
 variable "app_label" {

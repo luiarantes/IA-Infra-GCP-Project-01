@@ -81,9 +81,9 @@ class ToolRegistry:
             return f"Exceção na consulta Prometheus: {str(e)}"
 
     @staticmethod
-    def scrape_pod_metrics(pod_name: str, port: int = 8000) -> str:
+    def scrape_pod_metrics(pod_name: str, port: int = 8000, namespace: str = "apps") -> str:
         """Coleta o /metrics diretamente do pod via Kubelet Raw Proxy (zero dependência de backend)."""
-        raw_path = f"/api/v1/namespaces/default/pods/{pod_name}:{port}/proxy/metrics"
+        raw_path = f"/api/v1/namespaces/{namespace}/pods/{pod_name}:{port}/proxy/metrics"
         try:
             cmd = ["kubectl", "get", "--raw", raw_path]
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=20)
@@ -385,7 +385,7 @@ TOOLS_SCHEMA = [
     {
         "name": "scrape_pod_metrics",
         "description": "Coleta o /metrics instantâneo do pod via Kubelet Proxy sem depender de banco de métricas.",
-        "parameters": {"type": "object", "properties": {"pod_name": {"type": "string"}, "port": {"type": "integer"}}, "required": ["pod_name"]}
+        "parameters": {"type": "object", "properties": {"pod_name": {"type": "string"}, "port": {"type": "integer"}, "namespace": {"type": "string"}}, "required": ["pod_name"]}
     },
     {
         "name": "query_loki_logs",
@@ -443,7 +443,7 @@ def execute_tool(name: str, args: Dict[str, Any]) -> str:
     elif name == "query_prometheus":
         return ToolRegistry.query_prometheus(args.get("promql", ""))
     elif name == "scrape_pod_metrics":
-        return ToolRegistry.scrape_pod_metrics(args.get("pod_name", ""), args.get("port", 8000))
+        return ToolRegistry.scrape_pod_metrics(args.get("pod_name", ""), args.get("port", 8000), args.get("namespace", "apps"))
     elif name == "query_loki_logs":
         return ToolRegistry.query_loki_logs(args.get("query", ""), args.get("limit", 50))
     elif name == "read_file":

@@ -15,6 +15,12 @@ def apply_yaml(content: str):
 def main():
     print("📄 Aplicando manifestos dos microsserviços e do BuscaCEP...")
 
+    # 0. Criar namespaces dedicados
+    namespaces_path = INFRA_DIR / "local" / "manifests" / "namespaces.yaml"
+    if namespaces_path.exists():
+        with open(namespaces_path) as f:
+            apply_yaml(f.read())
+
     # 1. Aplicar NodePort services para acesso direto em localhost primeiro
     # Isso reserva as portas 30000, 30080, 30300, 30440, 30901 no Kind e evita colisões.
     local_ingress_path = INFRA_DIR / "local" / "manifests" / "local-ingress-services.yaml"
@@ -35,7 +41,7 @@ def main():
     with open(INFRA_DIR / "apps" / "gateway" / "deployment.yaml") as f:
         content = f.read().replace("${IMAGE}", "gateway:local").replace("${PROJECT_ID}", "aiops-local")
         env_extra = f"""            - name: OTEL_EXPORTER_OTLP_ENDPOINT
-              value: "http://otel-collector:4318/v1/traces"
+              value: "http://otel-collector.observability:4318/v1/traces"
 """
         content = content.replace("          env:\n", "          env:\n" + env_extra)
         apply_yaml(content)
@@ -49,9 +55,9 @@ def main():
     with open(INFRA_DIR / "apps" / "service-api" / "deployment.yaml") as f:
         content = f.read().replace("${IMAGE}", "service-api:local").replace("${PROJECT_ID}", "aiops-local")
         env_extra = f"""            - name: PUBSUB_EMULATOR_HOST
-              value: "pubsub-emulator:8085"
+              value: "pubsub-emulator.infra:8085"
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
-              value: "http://otel-collector:4318/v1/traces"
+              value: "http://otel-collector.observability:4318/v1/traces"
 """
         content = content.replace("          env:\n", "          env:\n" + env_extra)
         apply_yaml(content)
@@ -64,7 +70,7 @@ def main():
     with open(INFRA_DIR / "apps" / "service-downstream" / "deployment.yaml") as f:
         content = f.read().replace("${IMAGE}", "service-downstream:local").replace("${PROJECT_ID}", "aiops-local")
         env_extra = f"""            - name: OTEL_EXPORTER_OTLP_ENDPOINT
-              value: "http://otel-collector:4318/v1/traces"
+              value: "http://otel-collector.observability:4318/v1/traces"
 """
         content = content.replace("          env:\n", "          env:\n" + env_extra)
         apply_yaml(content)
@@ -77,9 +83,9 @@ def main():
     with open(INFRA_DIR / "apps" / "service-worker" / "deployment.yaml") as f:
         content = f.read().replace("${IMAGE}", "service-worker:local").replace("${PROJECT_ID}", "aiops-local")
         env_extra = f"""            - name: PUBSUB_EMULATOR_HOST
-              value: "pubsub-emulator:8085"
+              value: "pubsub-emulator.infra:8085"
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
-              value: "http://otel-collector:4318/v1/traces"
+              value: "http://otel-collector.observability:4318/v1/traces"
 """
         content = content.replace("          env:\n", "          env:\n" + env_extra)
         apply_yaml(content)
@@ -96,14 +102,14 @@ def main():
         with open(APPS_DIR / "k8s" / "deployment-api.yaml") as f:
             content = f.read().replace("IMAGE_PLACEHOLDER", "buscacep:local")
             env_extra = """            - name: PUBSUB_EMULATOR_HOST
-              value: "pubsub-emulator:8085"
+              value: "pubsub-emulator.infra:8085"
 """
             content = content.replace("          env:\n", "          env:\n" + env_extra)
             apply_yaml(content)
         with open(APPS_DIR / "k8s" / "deployment-worker.yaml") as f:
             content = f.read().replace("IMAGE_PLACEHOLDER", "buscacep:local")
             env_extra = """            - name: PUBSUB_EMULATOR_HOST
-              value: "pubsub-emulator:8085"
+              value: "pubsub-emulator.infra:8085"
 """
             content = content.replace("          env:\n", "          env:\n" + env_extra)
             apply_yaml(content)

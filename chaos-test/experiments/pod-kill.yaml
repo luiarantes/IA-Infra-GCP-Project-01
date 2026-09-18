@@ -2,7 +2,7 @@ apiVersion: chaos-mesh.org/v1alpha1
 kind: PodChaos
 metadata:
   name: pod-kill
-  namespace: default
+  namespace: apps
   labels:
     aiops.lab/chaos: "true"
     aiops.lab/scenario: "pod-kill"
@@ -11,7 +11,7 @@ spec:
   mode: one
   selector:
     namespaces:
-      - default
+      - apps
     labelSelectors:
       app: gateway
   duration: "5m"

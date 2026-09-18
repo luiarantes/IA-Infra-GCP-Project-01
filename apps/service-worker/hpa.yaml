@@ -6,6 +6,7 @@ apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: service-worker
+  namespace: apps
 spec:
   scaleTargetRef:
     apiVersion: apps/v1

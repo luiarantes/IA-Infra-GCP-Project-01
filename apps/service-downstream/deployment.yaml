@@ -5,6 +5,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: service-downstream
+  namespace: apps
   labels:
     app: service-downstream
 spec:
@@ -28,9 +29,9 @@ spec:
             - name: PROJECT_ID
               value: "${PROJECT_ID}"
             - name: OTEL_EXPORTER_OTLP_LOGS_ENDPOINT
-              value: "http://otel-collector:4318/v1/logs"
+              value: "http://otel-collector.observability:4318/v1/logs"
             - name: PYROSCOPE_SERVER_ADDRESS
-              value: "http://pyroscope:4040"
+              value: "http://pyroscope.observability:4040"
           # GKE Autopilot exige requests explicitos em todo pod
           resources:
             requests:

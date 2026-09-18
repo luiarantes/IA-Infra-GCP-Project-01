@@ -10,6 +10,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: chaos-test
+  namespace: apps
 spec:
   backoffLimit: 0
   ttlSecondsAfterFinished: 3600

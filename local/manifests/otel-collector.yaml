@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: otel-collector
-  namespace: default
+  namespace: observability
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -36,13 +36,13 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: otel-collector
-    namespace: default
+    namespace: observability
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: otel-collector-config
-  namespace: default
+  namespace: observability
 data:
   config.yaml: |
     receivers:
@@ -58,23 +58,12 @@ data:
             - job_name: 'buscacep-api'
               scrape_interval: 5s
               static_configs:
-                - targets: ['buscacep-api:8000']
-            - job_name: 'gateway'
-              scrape_interval: 5s
+                - targets: ['buscacep-api.apps:80']
+
+            - job_name: 'otel-collector'
+              scrape_interval: 10s
               static_configs:
-                - targets: ['gateway:8080']
-            - job_name: 'service-api'
-              scrape_interval: 5s
-              static_configs:
-                - targets: ['service-api:8080']
-            - job_name: 'service-worker'
-              scrape_interval: 5s
-              static_configs:
-                - targets: ['service-worker:8080']
-            - job_name: 'service-downstream'
-              scrape_interval: 5s
-              static_configs:
-                - targets: ['service-downstream:8080']
+                - targets: ['0.0.0.0:8888']
 
     processors:
       memory_limiter:
@@ -98,24 +87,24 @@ data:
       resource:
         attributes:
           - key: environment
-            value: local-kind
+            value: aiops-platform
             action: upsert
 
     exporters:
       otlphttp/openobserve:
-        endpoint: "http://openobserve:5080/api/default"
+        endpoint: "http://openobserve.observability:5080/api/default"
         headers:
           Authorization: "${env:OPENOBSERVE_AUTH_HEADER}"
         tls:
           insecure: true
 
       otlp/tempo:
-        endpoint: "tempo:4317"
+        endpoint: "tempo.observability:4317"
         tls:
           insecure: true
 
       otlphttp/loki:
-        endpoint: "http://loki:3100/otlp"
+        endpoint: "http://loki.observability:3100/otlp"
         tls:
           insecure: true
 
@@ -138,7 +127,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: otel-collector
-  namespace: default
+  namespace: observability
   labels:
     app: otel-collector
 spec:
@@ -188,7 +177,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: otel-collector
-  namespace: default
+  namespace: observability
   labels:
     app: otel-collector
 spec:

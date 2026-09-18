@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: traffic-generator
-  namespace: default
+  namespace: observability
   labels:
     app: traffic-generator
 spec:
@@ -21,9 +21,9 @@ spec:
           args: ["run", "/scripts/traffic-generator.js"]
           env:
             - name: GATEWAY_URL
-              value: "http://gateway:8080"
+              value: "http://gateway.apps:8080"
             - name: BUSCACEP_URL
-              value: "http://buscacep-api:8000"
+              value: "http://buscacep-api.apps:80"
           resources:
             requests:
               cpu: 50m

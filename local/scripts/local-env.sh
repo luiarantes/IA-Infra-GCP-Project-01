@@ -35,7 +35,8 @@ create_cluster() {
 provision_workloads() {
     local MODE="${1:-${GRAFANA_STACK_MODE:-simple}}"
     check_prereqs
-    echo "📊 [2/6] Instalando serviços de infraestrutura local (Metrics-Server, Pub/Sub Emulator, OpenObserve, Grafana Stack [Modo: ${MODE}])..."
+    echo "📊 [2/6] Instalando serviços de infraestrutura local (Namespaces, Metrics-Server, Pub/Sub Emulator, OpenObserve, Grafana Stack [Modo: ${MODE}])..."
+    kubectl apply -f "${INFRA_DIR}/local/manifests/namespaces.yaml"
     kubectl apply -f "${INFRA_DIR}/local/manifests/metrics-server.yaml"
     kubectl apply -f "${INFRA_DIR}/local/manifests/pubsub-emulator.yaml"
     kubectl apply -f "${INFRA_DIR}/local/manifests/openobserve.yaml"
@@ -44,7 +45,7 @@ provision_workloads() {
         echo "🗄️ Modo Distribuído ativo: provisionando MinIO S3 Object Storage..."
         kubectl apply -f "${INFRA_DIR}/local/manifests/minio.yaml"
         echo "⏳ Aguardando criação dos buckets S3 no MinIO..."
-        kubectl wait --for=condition=complete --timeout=60s job/minio-create-buckets -n default || true
+        kubectl wait --for=condition=complete --timeout=60s job/minio-create-buckets -n infra || true
         kubectl apply -f "${INFRA_DIR}/observability/distributed/tempo-distributed-local.yaml"
         kubectl apply -f "${INFRA_DIR}/observability/distributed/loki-distributed-local.yaml"
     else
@@ -81,24 +82,24 @@ provision_workloads() {
 
     echo "⏳ [6/6] Aguardando inicialização e prontidão dos pods..."
     kubectl rollout status deployment/metrics-server -n kube-system --timeout=90s || true
-    kubectl rollout status deployment/pubsub-emulator --timeout=90s || true
-    kubectl rollout status deployment/openobserve --timeout=90s || true
+    kubectl rollout status deployment/pubsub-emulator -n infra --timeout=90s || true
+    kubectl rollout status deployment/openobserve -n observability --timeout=90s || true
     if [ "${MODE}" = "distributed" ]; then
-        kubectl rollout status deployment/minio --timeout=90s || true
+        kubectl rollout status deployment/minio -n infra --timeout=90s || true
     fi
-    kubectl rollout status deployment/tempo --timeout=90s || true
-    kubectl rollout status deployment/loki --timeout=90s || true
-    kubectl rollout status deployment/pyroscope --timeout=90s || true
-    kubectl rollout status deployment/grafana --timeout=90s || true
-    kubectl rollout status daemonset/beyla --timeout=90s || true
-    kubectl rollout status deployment/otel-collector --timeout=90s || true
-    kubectl rollout status deployment/gateway --timeout=90s || true
-    kubectl rollout status deployment/service-api --timeout=90s || true
-    kubectl rollout status deployment/service-worker --timeout=90s || true
-    kubectl rollout status deployment/service-downstream --timeout=90s || true
+    kubectl rollout status deployment/tempo -n observability --timeout=90s || true
+    kubectl rollout status deployment/loki -n observability --timeout=90s || true
+    kubectl rollout status deployment/pyroscope -n observability --timeout=90s || true
+    kubectl rollout status deployment/grafana -n observability --timeout=90s || true
+    kubectl rollout status daemonset/beyla -n observability --timeout=90s || true
+    kubectl rollout status deployment/otel-collector -n observability --timeout=90s || true
+    kubectl rollout status deployment/gateway -n apps --timeout=90s || true
+    kubectl rollout status deployment/service-api -n apps --timeout=90s || true
+    kubectl rollout status deployment/service-worker -n apps --timeout=90s || true
+    kubectl rollout status deployment/service-downstream -n apps --timeout=90s || true
     if [ -n "${APPS_REPO_DIR}" ] && [ -d "${APPS_REPO_DIR}/k8s" ]; then
-        kubectl rollout status deployment/buscacep-api --timeout=90s || true
-        kubectl rollout status deployment/buscacep-worker --timeout=90s || true
+        kubectl rollout status deployment/buscacep-api -n apps --timeout=90s || true
+        kubectl rollout status deployment/buscacep-worker -n apps --timeout=90s || true
     fi
 
     echo "🎛️ Sincronizando Painel de Controle AIOps..."
@@ -140,11 +141,17 @@ cluster_down() {
 }
 
 cluster_status() {
-    echo "=== Pods no namespace default ==="
-    kubectl get pods -o wide -n default --context "kind-${CLUSTER_NAME}" || true
+    echo "=== Pods no namespace apps ==="
+    kubectl get pods -o wide -n apps --context "kind-${CLUSTER_NAME}" || true
+    echo ""
+    echo "=== Pods no namespace observability ==="
+    kubectl get pods -o wide -n observability --context "kind-${CLUSTER_NAME}" || true
+    echo ""
+    echo "=== Pods no namespace infra ==="
+    kubectl get pods -o wide -n infra --context "kind-${CLUSTER_NAME}" || true
     echo ""
     echo "=== Consumo de CPU/Memória (Metrics-Server) ==="
-    kubectl top pods -n default --context "kind-${CLUSTER_NAME}" || true
+    kubectl top pods -A --context "kind-${CLUSTER_NAME}" || true
 }
 
 run_test() {

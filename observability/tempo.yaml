@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: tempo-config
-  namespace: default
+  namespace: observability
 data:
   tempo.yaml: |
     stream_over_http_enabled: true
@@ -42,7 +42,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: tempo
-  namespace: default
+  namespace: observability
   labels:
     app: tempo
 spec:
@@ -89,7 +89,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: tempo
-  namespace: default
+  namespace: observability
   labels:
     app: tempo
 spec:

@@ -15,7 +15,7 @@ export const options = {
 // DNS interno do cluster - o gateway tem Service type=LoadBalancer,
 // mas isso tambem cria um ClusterIP normal, entao um pod dentro do
 // cluster (como este Job) chega nele sem precisar do IP publico.
-const GATEWAY_URL = __ENV.GATEWAY_URL || "http://gateway:8080";
+const GATEWAY_URL = __ENV.GATEWAY_URL || "http://gateway.apps:8080";
 
 export default function () {
   const res = http.post(

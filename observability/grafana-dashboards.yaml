@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: grafana-dashboard-providers
-  namespace: default
+  namespace: observability
 data:
   dashboards.yaml: |
     apiVersion: 1
@@ -20,7 +20,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: grafana-dashboards-json
-  namespace: default
+  namespace: observability
 data:
   aiops-platform-overview.json: |
     {

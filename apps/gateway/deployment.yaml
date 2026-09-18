@@ -7,6 +7,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: gateway
+  namespace: apps
   labels:
     app: gateway
 spec:
@@ -28,15 +29,15 @@ spec:
               containerPort: 8080
           env:
             - name: SERVICE_API_URL
-              value: "http://service-api:8080"
+              value: "http://service-api.apps:8080"
             - name: BUSCACEP_API_URL
-              value: "http://buscacep-api:80"
+              value: "http://buscacep-api.apps:80"
             - name: PROJECT_ID
               value: "${PROJECT_ID}"
             - name: OTEL_EXPORTER_OTLP_LOGS_ENDPOINT
-              value: "http://otel-collector:4318/v1/logs"
+              value: "http://otel-collector.observability:4318/v1/logs"
             - name: PYROSCOPE_SERVER_ADDRESS
-              value: "http://pyroscope:4040"
+              value: "http://pyroscope.observability:4040"
 
 
           # GKE Autopilot exige requests explicitos em todo pod

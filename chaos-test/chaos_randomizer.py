@@ -169,9 +169,9 @@ def show_status():
     else:
         print("ℹ️ Nenhum experimento ativo no momento.")
 
-    code, out, _ = run_cmd(["kubectl", "get", "networkchaos,httpchaos,stresschaos,podchaos", "-n", "default"])
+    code, out, _ = run_cmd(["kubectl", "get", "networkchaos,httpchaos,stresschaos,podchaos", "-n", "apps"])
     if code == 0 and out.strip():
-        print("\nRecursos Chaos Mesh no namespace default:")
+        print("\nRecursos Chaos Mesh no namespace apps:")
         print(out)
 
 

@@ -90,30 +90,31 @@ local-agent:
 
 local-load-test:
 	@echo "🚀 Criando ConfigMap do script k6..."
-	@kubectl create configmap k6-script --from-file=script.js=load-test/script.js --dry-run=client -o yaml | kubectl apply -f -
+	@kubectl create configmap k6-script -n apps --from-file=script.js=load-test/script.js --dry-run=client -o yaml | kubectl apply -f -
 	@echo "🚀 Executando Job de Teste de Carga (k6) no cluster local..."
-	@kubectl delete job k6-load-test 2>/dev/null || true
+	@kubectl delete job k6-load-test -n apps 2>/dev/null || true
 	@kubectl apply -f load-test/job.yaml
 	@echo "⏳ Acompanhando execucao do teste de carga..."
-	@kubectl wait --for=condition=complete --timeout=240s job/k6-load-test || true
-	@kubectl logs -f job/k6-load-test
+	@kubectl wait --for=condition=complete --timeout=240s job/k6-load-test -n apps || true
+	@kubectl logs -f job/k6-load-test -n apps
 
 local-traffic-start:
 	@echo "🚀 Iniciando gerador de tráfego contínuo no cluster local..."
-	@kubectl create configmap traffic-generator-script --from-file=traffic-generator.js=local/scripts/traffic-generator.js --dry-run=client -o yaml | kubectl apply -f -
+	@kubectl create configmap traffic-generator-script -n observability --from-file=traffic-generator.js=local/scripts/traffic-generator.js --dry-run=client -o yaml | kubectl apply -f -
 	@kubectl apply -f observability/traffic-generator.yaml
 	@echo "✅ Gerador de tráfego contínuo ativo em background!"
 
 local-traffic-stop:
 	@echo "🛑 Parando gerador de tráfego contínuo..."
-	@kubectl delete deployment traffic-generator 2>/dev/null || true
+	@kubectl delete deployment traffic-generator -n observability 2>/dev/null || true
 	@echo "✅ Gerador de tráfego contínuo finalizado."
 
 local-chaos-test:
 	@echo "🌪️ Executando Job de Chaos Engineering no cluster local..."
+	@kubectl apply -f chaos-test/rbac.yaml
 	@kubectl apply -f chaos-test/job.yaml
-	@kubectl wait --for=condition=complete --timeout=120s job/chaos-test || true
-	@kubectl logs job/chaos-test
+	@kubectl wait --for=condition=complete --timeout=120s job/chaos-test -n apps || true
+	@kubectl logs job/chaos-test -n apps
 
 obs-ui:
 	@echo "📊 Abrindo OpenObserve em http://localhost:5080 ..."
@@ -155,8 +156,8 @@ panel-sync:
 local-dashboards-reload:
 	@echo "🔄 Atualizando dashboards do Grafana a partir de observability/grafana-dashboards.yaml..."
 	@kubectl apply -f observability/grafana-dashboards.yaml
-	@kubectl rollout restart deployment/grafana
-	@kubectl rollout status deployment/grafana --timeout=60s
+	@kubectl rollout restart deployment/grafana -n observability
+	@kubectl rollout status deployment/grafana -n observability --timeout=60s
 	@echo "✅ Dashboards recarregados com sucesso no Grafana!"
 
 
