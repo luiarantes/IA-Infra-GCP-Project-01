@@ -44,3 +44,6 @@ __pycache__/
 *$py.class
 .ground-truth/
 
+# Testes de Carga / Relatórios
+load-test/*.html
+

@@ -5,7 +5,7 @@ window.AIOPS_DATA = {
   "cluster_name": "aiops-gke",
   "cluster_location": "us-central1-a",
   "active_env": "local",
-  "last_synced_at": "2026-09-17T21:18:31.902508+00:00",
+  "last_synced_at": "2026-09-18T03:14:56.748092+00:00",
   "services": [
     {
       "id": "openobserve",
@@ -68,6 +68,21 @@ window.AIOPS_DATA = {
       "credentials": null,
       "health_path": "/api/common/version",
       "is_external": false
+    },
+    {
+      "id": "k6_dashboard",
+      "name": "k6 Web Dashboard",
+      "category": "observability",
+      "category_name": "Observabilidade & APM",
+      "description": "Interface gráfica em tempo real do Grafana k6: Throughput (RPS), latência p90/p95, VUs ativas e taxas de erro sob carga.",
+      "icon": "gauge",
+      "local_url": "http://localhost:5665",
+      "local_port": 5665,
+      "gcp_url": "https://console.cloud.google.com/monitoring/dashboards?project=ia-infra-gcp-project-01",
+      "credentials": null,
+      "health_path": null,
+      "is_external": false,
+      "is_on_demand": true
     },
     {
       "id": "gcp_monitoring",
@@ -301,6 +316,14 @@ window.AIOPS_DATA = {
     {
       "description": "Abrir Chaos Mesh Dashboard no navegador",
       "command": "make chaos-ui"
+    },
+    {
+      "description": "Executar teste de carga com k6 Web Dashboard ao vivo",
+      "command": "make k6-ui"
+    },
+    {
+      "description": "Gerar relatório gráfico HTML exportável do k6",
+      "command": "make k6-report"
     }
   ]
 };

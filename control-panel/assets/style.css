@@ -368,6 +368,12 @@ body {
   border: 1px solid rgba(99, 102, 241, 0.3);
 }
 
+.health-badge.ondemand {
+  background-color: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
 .card-desc {
   font-size: 0.8rem;
   color: var(--text-secondary);

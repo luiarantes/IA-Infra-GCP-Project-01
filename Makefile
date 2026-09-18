@@ -1,4 +1,4 @@
-.PHONY: help local-up local-up-simple local-up-distributed local-down local-status local-test local-agent local-load-test local-chaos-test local-traffic-start local-traffic-stop local-dashboards-reload obs-ui grafana-ui pyroscope-ui minio-ui chaos-ui panel panel-sync local-aiops-ollama-up local-aiops-ollama-down local-aiops-chaos local-aiops-analyze local-aiops-fix local-aiops-verify local-aiops-demo gcp-up gcp-down aws-up aws-down
+.PHONY: help local-up local-up-simple local-up-distributed local-down local-status local-test local-agent local-load-test local-chaos-test local-traffic-start local-traffic-stop local-dashboards-reload obs-ui grafana-ui pyroscope-ui minio-ui chaos-ui k6-ui k6-report panel panel-sync local-aiops-ollama-up local-aiops-ollama-down local-aiops-chaos local-aiops-analyze local-aiops-fix local-aiops-verify local-aiops-demo gcp-up gcp-down aws-up aws-down
 
 help:
 	@echo "========================================================================="
@@ -24,6 +24,8 @@ help:
 	@echo "    make pyroscope-ui        - Abre a interface web do Pyroscope no navegador"
 	@echo "    make minio-ui            - Abre a interface web do MinIO Console no navegador"
 	@echo "    make chaos-ui            - Abre a interface web do Chaos Mesh Dashboard no navegador"
+	@echo "    make k6-ui               - Executa teste de carga k6 abrindo Web Dashboard ao vivo no navegador"
+	@echo "    make k6-report           - Executa k6 e gera relatório gráfico HTML exportável (load-test/report.html)"
 	@echo ""
 	@echo "  🤖 Agentes AIOps & Self-Healing Local (Ollama + Telemetria):"
 	@echo "    make local-aiops-ollama-up   - Sobe container Docker do Ollama com modelo qwen2.5-coder:7b"
@@ -132,6 +134,17 @@ minio-ui:
 chaos-ui:
 	@echo "🌪️ Abrindo Chaos Mesh Dashboard em http://localhost:2333 ..."
 	@open http://localhost:2333 2>/dev/null || echo "Acesse: http://localhost:2333"
+
+k6-ui:
+	@echo "🚀 Iniciando teste de carga com k6 Web Dashboard ao vivo..."
+	@echo "📊 O Dashboard será aberto em: http://127.0.0.1:5665"
+	@K6_WEB_DASHBOARD=true K6_WEB_DASHBOARD_OPEN=true k6 run -e GATEWAY_URL="http://localhost:8080" load-test/script.js
+
+k6-report:
+	@echo "📊 Executando teste de carga e compilando relatório gráfico HTML..."
+	@k6 run -o web-dashboard=export=load-test/report.html -e GATEWAY_URL="http://localhost:8080" load-test/script.js
+	@echo "✅ Relatório gerado com sucesso em: load-test/report.html"
+	@open load-test/report.html 2>/dev/null || echo "Abra load-test/report.html no navegador"
 
 panel:
 	@python3 scripts/sync_control_panel.py --open

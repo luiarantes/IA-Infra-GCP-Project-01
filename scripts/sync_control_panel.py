@@ -182,6 +182,7 @@ def sync_panel(target_env=None, do_open=False, generate_summary=False):
         "pubsub_emulator": local_ports.get("pubsub", 8085),
         "minio_console": local_ports.get("minio", 9001),
         "chaos_dashboard": local_ports.get("chaos_dashboard", 2333),
+        "k6_dashboard": 5665,
     }
 
     # 2. Sincronização GCP
@@ -296,6 +297,8 @@ def generate_markdown_summary(catalog, active_env):
             note = f"`{creds['user']}` / `{creds['pass']}`"
         elif svc.get("is_external"):
             note = "Console Web GCP"
+        elif svc.get("is_on_demand"):
+            note = f"Porta `:{svc.get('local_port', 5665)}` (Sob demanda — `make k6-ui`)"
         elif active_env == "local" and svc.get("local_port"):
             note = f"Porta `:{svc['local_port']}`"
         else:
