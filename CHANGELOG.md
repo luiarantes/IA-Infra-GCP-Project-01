@@ -8,6 +8,7 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 ## [Unreleased]
 
 ### Added
+- **control-panel**: Adição de favicon SVG vetorial e unificação do logotipo do cabeçalho com identidade visual de radar e telemetria AIOps, garantindo renderização nítida sem dependências externas.
 - **k8s**: Declaração explícita e isolamento de namespaces dedicados (`apps`, `observability` e `infra`) em `local/manifests/namespaces.yaml`, eliminando o uso do namespace `default`.
 - **control-panel**: Expansão do catálogo de ferramentas com novos cards para BuscaCEP Frontend Web, Gateway Swagger OpenAPI, ReDoc, Central de Alertas e Incidentes GCP, Google Cloud Trace, Cloud Storage Terraform State e IAM Workload Identity Federation.
 - **k6**: Integração nativa do k6 Web Dashboard (porta 5665) ao Painel de Controle AIOps, com status sob demanda e targets `make k6-ui` (dashboard interativo ao vivo no navegador) e `make k6-report` (exportação de relatório gráfico HTML).
