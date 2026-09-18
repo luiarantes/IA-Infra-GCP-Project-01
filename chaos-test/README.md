@@ -62,3 +62,23 @@ python3 chaos-test/chaos_randomizer.py --action status
 python3 chaos-test/chaos_randomizer.py --action clean
 ```
 
+---
+
+## 4. Interface Gráfica — Chaos Mesh Dashboard (Web UI)
+
+O Chaos Mesh disponibiliza uma interface web interativa completa para criar experimentos visualmente e acompanhar timelines de incidentes:
+
+- **Acesso Local (Kind)**: `http://localhost:2333` (exposto nativamente via NodePort `32333` mapeado para a porta do host `2333`, sem necessidade de `kubectl port-forward`).
+- **Acesso Nuvem (GKE)**: `http://<IP-DO-LOADBALANCER>:2333` (provisionado automaticamente com IP público).
+- **Atalho no Makefile**:
+  ```bash
+  make chaos-ui
+  ```
+
+### Arquitetura de Pods no Namespace `chaos-mesh`:
+- **`chaos-dashboard`**: Servidor Web da interface gráfica.
+- **`chaos-controller-manager`** *(3 réplicas)*: Orquestrador do ciclo de vida dos experimentos (CRDs `NetworkChaos`, `PodChaos`, `StressChaos`, `HTTPChaos`).
+- **`chaos-daemon`**: DaemonSet com privilégios de kernel para injeção física via `containerd`, `cgroups` e `iptables`.
+- **`chaos-dns-server`**: Servidor DNS interno para injeção de falhas de resolução de nomes.
+
+
