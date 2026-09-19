@@ -78,3 +78,19 @@ jobs:
           for SERVICE in gateway service-api service-worker service-downstream; do
             kubectl rollout status "deployment/${SERVICE}" -n apps --timeout=180s
           done
+
+      - name: Smoke Test E2E pós-deploy (k6)
+        run: |
+          echo "🚀 Executando validação de fumaça (Smoke Test) pós-deploy..."
+          kubectl delete job k6-smoke-test -n apps --ignore-not-found
+          kubectl create configmap k6-smoke-script -n apps \
+            --from-file=smoke-test.js=load-test/smoke-test.js \
+            --dry-run=client -o yaml | kubectl apply -f -
+          kubectl apply -f load-test/smoke-job.yaml
+          kubectl wait --for=condition=complete job/k6-smoke-test -n apps --timeout=60s || {
+            echo "❌ Smoke Test falhou! Logs do container k6:"
+            kubectl logs job/k6-smoke-test -n apps
+            exit 1
+          }
+          echo "✅ Smoke Test concluído com sucesso! Pods saudáveis e respondendo a tráfego real."
+          kubectl logs job/k6-smoke-test -n apps
