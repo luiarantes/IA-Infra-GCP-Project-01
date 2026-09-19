@@ -116,7 +116,7 @@ data:
             {
               "datasource": { "type": "loki", "uid": "loki" },
               "editorMode": "code",
-              "expr": "sum by (service_name) (rate({service_name=~\"$service\"} |~ \"(?i)(error|5[0-9]{2}|exception|fail)\" [1m]))",
+              "expr": "sum by (service_name) (rate({service_name=~\"$service\"} |~ \"(?i)(\\\\b(error|critical|exception|traceback|failed)\\\\b|HTTP/\\\\d\\\\.\\\\d\\\\\\\"\\\\s*5\\\\d{2}|status[_\\\\w]*[=:]\\\\s*5\\\\d{2})\" [1m]))",
               "legendFormat": "{{service_name}}",
               "queryType": "range",
               "refId": "A"
@@ -158,7 +158,7 @@ data:
             {
               "datasource": { "type": "loki", "uid": "loki" },
               "editorMode": "code",
-              "expr": "sum(count_over_time({service_name=~\"$service\"} |~ \"(?i)(error|5[0-9]{2}|exception|fail)\" [$__range]))",
+              "expr": "sum(count_over_time({service_name=~\"$service\"} |~ \"(?i)(\\\\b(error|critical|exception|traceback|failed)\\\\b|HTTP/\\\\d\\\\.\\\\d\\\\\\\"\\\\s*5\\\\d{2}|status[_\\\\w]*[=:]\\\\s*5\\\\d{2})\" [$__range]))",
               "refId": "A"
             }
           ]
@@ -530,7 +530,7 @@ data:
             {
               "datasource": { "type": "loki", "uid": "loki" },
               "editorMode": "code",
-              "expr": "sum(count_over_time({service_name=~\"buscacep.*\"} |~ \"(?i)(error|5[0-9]{2}|exception)\" [$__range]))",
+              "expr": "sum(count_over_time({service_name=~\"buscacep.*\"} |~ \"(?i)(\\\\b(error|critical|exception|traceback|failed)\\\\b|HTTP/\\\\d\\\\.\\\\d\\\\\\\"\\\\s*5\\\\d{2}|status[_\\\\w]*[=:]\\\\s*5\\\\d{2})\" [$__range]))",
               "refId": "A"
             }
           ]

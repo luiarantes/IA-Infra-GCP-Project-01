@@ -20,6 +20,7 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 - **scripts**: Script automatizado `sync_control_panel.py` para descoberta dinâmica de portas locais (Kind) e IPs externos de Load Balancers (GKE), com suporte a resumo em Markdown e integração com `make panel`, `make panel-sync` e GitHub Actions ($GITHUB_STEP_SUMMARY).
 
 ### Fixed
+- **observability**: Correção de falsos positivos nos painéis de erro do Grafana (Loki), restringindo a regex de códigos 5xx e palavras-chave de erro com delimitação de palavras (`\b`) e contexto HTTP para evitar casamento indevido com portas TCP efêmeras de clientes e UUIDs de mensagens.
 - **security**: Remoção de segredos estáticos codificados em Base64 nos manifestos Kubernetes do OpenObserve (`local/manifests/openobserve.yaml` e `observability/openobserve.yaml`), passando a gerar o Secret `openobserve-credentials` dinamicamente em tempo de execução via scripts e esteiras de CI/CD, eliminando alertas de secret scanners (GitGuardian).
 - **observability**: Otimização do Grafana Beyla com exclusão de rotas de probes internas (`/healthz`, `/readyz`, `/metrics`, pushes de profiling) e desativação de `trace_printer` em stdout, eliminando sobrecarga e contenção de CPU na VM do Docker.
 - **local**: Prevenção de colisão de portas dinâmicas no Kind através da reserva estática antecipada de `local-ingress-services.yaml` no `apply_local_manifests.py`.
