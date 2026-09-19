@@ -21,26 +21,8 @@
       </div>
 
       <div class="header-actions">
-        <!-- Switcher de Ambiente -->
-        <div class="env-selector" role="tablist">
-          <button id="btn-env-local" class="env-tab active" onclick="setEnvironment('local')">
-            <svg class="icon-svg" viewBox="0 0 24 24">
-              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
-              <line x1="8" y1="21" x2="16" y2="21"/>
-              <line x1="12" y1="17" x2="12" y2="21"/>
-            </svg>
-            Local (Kind)
-          </button>
-          <button id="btn-env-gcp" class="env-tab" onclick="setEnvironment('gcp')">
-            <svg class="icon-svg" viewBox="0 0 24 24">
-              <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>
-            </svg>
-            GCP Cloud (GKE)
-          </button>
-        </div>
-
         <!-- Botão Health Check -->
-        <button class="btn btn-primary" onclick="runHealthChecks()" title="Verificar disponibilidade dos serviços">
+        <button class="btn btn-primary" onclick="runHealthChecks()" title="Verificar disponibilidade dos serviços na plataforma selecionada">
           <svg class="icon-svg" viewBox="0 0 24 24">
             <polyline points="23 4 23 10 17 10"/>
             <polyline points="1 20 1 14 7 14"/>
@@ -52,6 +34,64 @@
     </div>
   </header>
 
+  <!-- Barra de Navegação de Plataformas (Tabs) -->
+  <nav class="platform-nav" aria-label="Navegação de Plataformas">
+    <div class="platform-nav-container">
+      <div class="platform-tabs" role="tablist">
+        <button id="tab-all" class="platform-tab" onclick="setPlatformTab('all')" role="tab" aria-selected="false">
+          <svg class="icon-svg" viewBox="0 0 24 24">
+            <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+            <polyline points="2 17 12 22 22 17"/>
+            <polyline points="2 12 12 17 22 12"/>
+          </svg>
+          <span>Todas as Plataformas</span>
+          <span class="tab-badge" id="badge-all">0</span>
+        </button>
+
+        <button id="tab-local" class="platform-tab active" onclick="setPlatformTab('local')" role="tab" aria-selected="true">
+          <svg class="icon-svg" viewBox="0 0 24 24">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+            <line x1="8" y1="21" x2="16" y2="21"/>
+            <line x1="12" y1="17" x2="12" y2="21"/>
+          </svg>
+          <span>Ambiente Local (Kind)</span>
+          <span class="tab-badge" id="badge-local">0</span>
+        </button>
+
+        <button id="tab-gcp" class="platform-tab" onclick="setPlatformTab('gcp')" role="tab" aria-selected="false">
+          <svg class="icon-svg" viewBox="0 0 24 24">
+            <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>
+          </svg>
+          <span>Google Cloud (GCP)</span>
+          <span class="tab-badge" id="badge-gcp">0</span>
+        </button>
+
+        <button id="tab-aiops" class="platform-tab" onclick="setPlatformTab('aiops')" role="tab" aria-selected="false">
+          <svg class="icon-svg" viewBox="0 0 24 24">
+            <circle cx="18" cy="18" r="3"/>
+            <circle cx="6" cy="6" r="3"/>
+            <path d="M13 6h3a2 2 0 0 1 2 2v7"/>
+            <line x1="6" y1="9" x2="6" y2="21"/>
+          </svg>
+          <span>CI/CD & Automação</span>
+          <span class="tab-badge" id="badge-aiops">0</span>
+        </button>
+      </div>
+
+      <!-- Busca Integrada na Barra de Navegação -->
+      <div class="search-box-wrapper">
+        <span class="search-icon-pos">
+          <svg class="icon-svg" style="width: 14px; height: 14px;" viewBox="0 0 24 24">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+        </span>
+        <input type="text" id="search-input" class="search-input" placeholder="Filtrar ferramentas ou métricas..." 
+               oninput="filterCards(this.value)">
+      </div>
+    </div>
+  </nav>
+
   <!-- Conteúdo Principal -->
   <main class="main-content">
     
@@ -59,14 +99,11 @@
     <section class="sync-banner">
       <div class="sync-info">
         <span class="status-indicator"></span>
-        <span>Ambiente Selecionado: <strong id="current-env-label" style="color: var(--text-primary);">Local (Kind)</strong></span>
+        <span>Plataforma Ativa: <strong id="current-platform-label" style="color: var(--color-brand);">Ambiente Local (Kind)</strong></span>
+        <span>•</span>
+        <span>Recursos Visíveis: <strong id="visible-cards-count" style="color: var(--text-primary);">-</strong></span>
         <span>•</span>
         <span>Última Sincronização: <span id="last-sync-label" class="sync-timestamp">-</span></span>
-      </div>
-      <div style="display: flex; gap: 0.5rem; align-items: center;">
-        <input type="text" id="search-input" placeholder="Filtrar ferramentas ou métricas..." 
-               style="background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: var(--radius-sm); padding: 5px 10px; font-size: 0.8rem; width: 220px;"
-               oninput="filterCards(this.value)">
       </div>
     </section>
 
@@ -128,6 +165,7 @@
   <!-- Lógica da Interface -->
   <script>
     let currentEnv = 'local';
+    let currentPlatform = 'local';
     let appData = null;
     const healthStatus = {};
 
@@ -161,17 +199,22 @@
     };
 
     function init() {
+      const savedTab = localStorage.getItem('aiops_platform_tab');
       if (window.AIOPS_DATA) {
         appData = window.AIOPS_DATA;
         currentEnv = appData.active_env || 'local';
-        render();
+        currentPlatform = savedTab || currentEnv || 'local';
+        updateBadges();
+        setPlatformTab(currentPlatform);
       } else {
         fetch('links.json')
           .then(res => res.json())
           .then(data => {
             appData = data;
             currentEnv = appData.active_env || 'local';
-            render();
+            currentPlatform = savedTab || currentEnv || 'local';
+            updateBadges();
+            setPlatformTab(currentPlatform);
           })
           .catch(err => {
             console.error('Erro ao carregar dados:', err);
@@ -179,12 +222,60 @@
       }
     }
 
-    function setEnvironment(env) {
-      currentEnv = env;
-      document.getElementById('btn-env-local').classList.toggle('active', env === 'local');
-      document.getElementById('btn-env-gcp').classList.toggle('active', env === 'gcp');
-      document.getElementById('current-env-label').textContent = env === 'local' ? 'Local (Kind)' : 'GCP Cloud (GKE)';
-      render();
+    function updateBadges() {
+      if (!appData || !appData.services) return;
+      const allCount = appData.services.length;
+      const localCount = appData.services.filter(s => s.platforms && s.platforms.includes('local')).length;
+      const gcpCount = appData.services.filter(s => s.platforms && s.platforms.includes('gcp')).length;
+      const aiopsCount = appData.services.filter(s => s.platforms && s.platforms.includes('aiops')).length;
+
+      const elAll = document.getElementById('badge-all');
+      const elLocal = document.getElementById('badge-local');
+      const elGcp = document.getElementById('badge-gcp');
+      const elAiops = document.getElementById('badge-aiops');
+
+      if (elAll) elAll.textContent = allCount;
+      if (elLocal) elLocal.textContent = localCount;
+      if (elGcp) elGcp.textContent = gcpCount;
+      if (elAiops) elAiops.textContent = aiopsCount;
+    }
+
+    function setPlatformTab(tab) {
+      currentPlatform = tab;
+      localStorage.setItem('aiops_platform_tab', tab);
+
+      // Atualiza botões visuais das abas
+      const tabs = ['all', 'local', 'gcp', 'aiops'];
+      tabs.forEach(t => {
+        const btn = document.getElementById(`tab-${t}`);
+        if (btn) {
+          const isActive = (t === tab);
+          btn.classList.toggle('active', isActive);
+          btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        }
+      });
+
+      if (tab === 'local') {
+        currentEnv = 'local';
+      } else if (tab === 'gcp') {
+        currentEnv = 'gcp';
+      } else {
+        currentEnv = (appData && appData.active_env) ? appData.active_env : 'local';
+      }
+
+      const platformLabels = {
+        'all': 'Visão Geral (Todas as Plataformas)',
+        'local': 'Ambiente Local (Kind)',
+        'gcp': 'Google Cloud Platform (GCP / GKE)',
+        'aiops': 'CI/CD & Self-Healing'
+      };
+      const labelElem = document.getElementById('current-platform-label');
+      if (labelElem) {
+        labelElem.textContent = platformLabels[tab] || tab;
+      }
+
+      const searchVal = document.getElementById('search-input') ? document.getElementById('search-input').value : '';
+      render(searchVal);
     }
 
     function render(filterQuery = '') {
@@ -194,7 +285,7 @@
       const syncDate = new Date(appData.last_synced_at);
       document.getElementById('last-sync-label').textContent = syncDate.toLocaleString('pt-BR');
 
-      // Agrupa serviços por categoria
+      // Categorias de exibição
       const categories = [
         { id: 'observability', title: 'Observabilidade & APM' },
         { id: 'apps', title: 'Aplicações & Microsserviços' },
@@ -205,9 +296,21 @@
       const container = document.getElementById('cards-container');
       container.innerHTML = '';
 
+      let totalVisibleCards = 0;
+
       categories.forEach(cat => {
         let services = appData.services.filter(s => s.category === cat.id);
-        
+
+        // 1. Filtragem por Plataforma Selecionada
+        if (currentPlatform === 'local') {
+          services = services.filter(s => s.platforms && s.platforms.includes('local'));
+        } else if (currentPlatform === 'gcp') {
+          services = services.filter(s => s.platforms && s.platforms.includes('gcp'));
+        } else if (currentPlatform === 'aiops') {
+          services = services.filter(s => s.platforms && s.platforms.includes('aiops'));
+        }
+
+        // 2. Filtragem textual de busca
         if (filterQuery.trim()) {
           const q = filterQuery.toLowerCase();
           services = services.filter(s => 
@@ -217,6 +320,8 @@
         }
 
         if (services.length === 0) return;
+
+        totalVisibleCards += services.length;
 
         const section = document.createElement('section');
         section.className = 'category-section';
@@ -241,6 +346,32 @@
         container.appendChild(section);
       });
 
+      // Atualiza contador de cards visíveis no banner
+      const visibleCountElem = document.getElementById('visible-cards-count');
+      if (visibleCountElem) {
+        visibleCountElem.textContent = `${totalVisibleCards} ${totalVisibleCards === 1 ? 'recurso' : 'recursos'}`;
+      }
+
+      // Empty state amigável caso não haja resultados
+      if (totalVisibleCards === 0) {
+        const platformNames = {
+          'all': 'Visão Geral',
+          'local': 'Ambiente Local (Kind)',
+          'gcp': 'Google Cloud (GCP)',
+          'aiops': 'CI/CD & Automação'
+        };
+        const currentName = platformNames[currentPlatform] || currentPlatform;
+        container.innerHTML = `
+          <div class="empty-reports-box" style="margin-top: 1.5rem; margin-bottom: 2rem;">
+            <div class="empty-reports-icon">🔍</div>
+            <div class="empty-reports-content">
+              <h4>Nenhum recurso encontrado</h4>
+              <p>${filterQuery.trim() ? `Não foram encontrados serviços para o termo "<strong>${filterQuery}</strong>" na plataforma <strong>${currentName}</strong>.` : `Nenhum serviço mapeado para esta plataforma.`}</p>
+            </div>
+          </div>
+        `;
+      }
+
       renderReports();
       renderCommands();
     }
@@ -249,9 +380,17 @@
       const card = document.createElement('div');
       card.className = `service-card category-${svc.category}`;
 
-      const targetUrl = currentEnv === 'local' ? svc.local_url : svc.gcp_url;
-      const isPending = targetUrl.includes('<PENDING>');
-      const statusKey = `${svc.id}-${currentEnv}`;
+      let targetUrl = svc.local_url;
+      if (currentPlatform === 'gcp') {
+        targetUrl = svc.gcp_url;
+      } else if (currentPlatform === 'local') {
+        targetUrl = svc.local_url;
+      } else {
+        targetUrl = currentEnv === 'gcp' ? svc.gcp_url : svc.local_url;
+      }
+
+      const isPending = targetUrl && targetUrl.includes('<PENDING>');
+      const statusKey = `${svc.id}-${currentPlatform === 'gcp' ? 'gcp' : 'local'}`;
       const rawHealth = healthStatus[statusKey];
       let currentHealth = rawHealth || (svc.is_external ? 'external' : (isPending ? 'pending' : (svc.is_on_demand ? 'ondemand' : 'default')));
       if (svc.is_on_demand && rawHealth === 'offline') {
@@ -286,7 +425,7 @@
             </button>
           </div>
         `;
-      } else if (currentEnv === 'local' && svc.local_port) {
+      } else if ((currentPlatform === 'local' || currentPlatform === 'all') && svc.local_port) {
         metaHtml = `
           <div class="card-meta">
             <span class="meta-label">Porta Local:</span>
@@ -344,9 +483,18 @@
     }
 
     function renderReports() {
+      const reportsSection = document.getElementById('reports-section');
       const reportsContainer = document.getElementById('reports-container');
       const reportsCount = document.getElementById('reports-count');
-      if (!reportsContainer || !reportsCount) return;
+      if (!reportsContainer || !reportsCount || !reportsSection) return;
+
+      // Oculta relatórios do k6 em abas que não pertencem ao ambiente local
+      if (currentPlatform === 'gcp' || currentPlatform === 'aiops') {
+        reportsSection.style.display = 'none';
+        return;
+      }
+
+      reportsSection.style.display = 'block';
 
       const reports = (appData && appData.k6_reports) ? appData.k6_reports : [];
       reportsCount.textContent = `${reports.length} ${reports.length === 1 ? 'relatório' : 'relatórios'}`;
@@ -404,9 +552,19 @@
       if (!terminalContainer || !appData.quick_commands) return;
 
       terminalContainer.innerHTML = '';
-      document.getElementById('commands-count').textContent = appData.quick_commands.length;
 
-      appData.quick_commands.forEach(cmd => {
+      let cmds = appData.quick_commands || [];
+      if (currentPlatform === 'local') {
+        cmds = cmds.filter(c => c.platform === 'local' || c.platform === 'all');
+      } else if (currentPlatform === 'gcp') {
+        cmds = cmds.filter(c => c.platform === 'gcp' || c.platform === 'all');
+      } else if (currentPlatform === 'aiops') {
+        cmds = cmds.filter(c => c.platform === 'aiops' || c.platform === 'all');
+      }
+
+      document.getElementById('commands-count').textContent = cmds.length;
+
+      cmds.forEach(cmd => {
         const item = document.createElement('div');
         item.className = 'terminal-card';
         item.innerHTML = `
@@ -453,18 +611,32 @@
     }
 
     async function runHealthChecks() {
-      showToast('Verificando conectividade dos endpoints...');
+      const platformLabels = {
+        'all': 'Geral (Todas)',
+        'local': 'Local (Kind)',
+        'gcp': 'Google Cloud (GCP)',
+        'aiops': 'CI/CD & Automação'
+      };
+      const pName = platformLabels[currentPlatform] || currentPlatform;
+      showToast(`Verificando conectividade [${pName}]...`);
       if (!appData) return;
 
-      for (const svc of appData.services) {
-        if (svc.is_external) continue;
+      let svcsToCheck = appData.services.filter(s => !s.is_external);
+      if (currentPlatform === 'local') {
+        svcsToCheck = svcsToCheck.filter(s => s.platforms && s.platforms.includes('local'));
+      } else if (currentPlatform === 'gcp') {
+        svcsToCheck = svcsToCheck.filter(s => s.platforms && s.platforms.includes('gcp'));
+      } else if (currentPlatform === 'aiops') {
+        svcsToCheck = svcsToCheck.filter(s => s.platforms && s.platforms.includes('aiops'));
+      }
 
-        const targetUrl = currentEnv === 'local' ? svc.local_url : svc.gcp_url;
-        if (targetUrl.includes('<PENDING>')) continue;
+      for (const svc of svcsToCheck) {
+        const targetUrl = (currentPlatform === 'gcp' ? svc.gcp_url : svc.local_url);
+        if (!targetUrl || targetUrl.includes('<PENDING>')) continue;
 
         const checkPath = svc.health_path || '';
         const urlToCheck = targetUrl.replace(/\/docs$|\/redoc$|\/healthz$|\/$/, '') + checkPath;
-        const statusKey = `${svc.id}-${currentEnv}`;
+        const statusKey = `${svc.id}-${currentPlatform === 'gcp' ? 'gcp' : 'local'}`;
 
         try {
           const controller = new AbortController();
@@ -483,8 +655,9 @@
         }
       }
 
-      render(document.getElementById('search-input').value);
-      showToast('Verificação concluída!');
+      const searchVal = document.getElementById('search-input') ? document.getElementById('search-input').value : '';
+      render(searchVal);
+      showToast(`Verificação [${pName}] concluída!`);
     }
 
     window.addEventListener('DOMContentLoaded', init);

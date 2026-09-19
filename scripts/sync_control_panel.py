@@ -26,6 +26,65 @@ LOCAL_VARS_PATH = INFRA_DIR / "infra" / "environments" / "local" / "variables.tf
 REPORTS_DIR = INFRA_DIR / "load-test" / "reports"
 LEGACY_REPORT_PATH = INFRA_DIR / "load-test" / "report.html"
 
+DEFAULT_PLATFORMS = {
+    # Workloads que operam em ambos os ambientes (Kind local e cluster GKE)
+    "openobserve": ["local", "gcp"],
+    "grafana": ["local", "gcp"],
+    "pyroscope": ["local", "gcp"],
+    "chaos_dashboard": ["local", "gcp"],
+    "buscacep_web": ["local", "gcp"],
+    "buscacep_docs": ["local", "gcp"],
+    "buscacep_redoc": ["local", "gcp"],
+    "buscacep_health": ["local", "gcp"],
+    "gateway_docs": ["local", "gcp"],
+    "gateway": ["local", "gcp"],
+    # Ferramentas e emuladores exclusivamente locais
+    "k6_dashboard": ["local"],
+    "pubsub_emulator": ["local"],
+    "minio_console": ["local"],
+    # Consoles, telemetria e serviços gerenciados exclusivamente GCP
+    "gcp_monitoring": ["gcp"],
+    "gcp_metrics_explorer": ["gcp"],
+    "gcp_logging": ["gcp"],
+    "gcp_alerting": ["gcp"],
+    "gcp_trace": ["gcp"],
+    "gcp_gke": ["gcp"],
+    "gcp_artifact_registry": ["gcp"],
+    "gcp_billing": ["gcp"],
+    "gcp_storage_tfstate": ["gcp"],
+    "gcp_iam_workload_identity": ["gcp"],
+    # Esteiras de CI/CD e Agentes Autônomos de IA
+    "github_actions_infra": ["aiops"],
+    "github_actions_app": ["aiops"],
+    "agent_findings": ["aiops"],
+    "agent_prs": ["aiops"],
+}
+
+DEFAULT_QUICK_COMMANDS = [
+    # Comandos Globais e Locais
+    {"description": "Sincronizar e abrir o painel de controle", "command": "make panel", "platform": "all"},
+    {"description": "Iniciar tráfego contínuo de observabilidade (k6)", "command": "make local-traffic-start", "platform": "local"},
+    {"description": "Parar gerador de tráfego contínuo", "command": "make local-traffic-stop", "platform": "local"},
+    {"description": "Testar fluxo end-to-end via terminal", "command": "make local-test", "platform": "local"},
+    {"description": "Verificar pods e consumo CPU/Memória", "command": "make local-status", "platform": "local"},
+    {"description": "Abrir Chaos Mesh Dashboard no navegador", "command": "make chaos-ui", "platform": "local"},
+    {"description": "Executar teste de carga com k6 Web Dashboard ao vivo", "command": "make k6-ui", "platform": "local"},
+    {"description": "Executar Smoke Test rápido de validação E2E (k6)", "command": "make smoke-test", "platform": "local"},
+    {"description": "Gerar relatório gráfico HTML exportável do k6", "command": "make k6-report", "platform": "local"},
+    # Comandos Google Cloud (GCP)
+    {"description": "Disparar Terraform Apply no GCP via GitHub Actions", "command": "make gcp-up", "platform": "gcp"},
+    {"description": "Disparar Terraform Destroy no GCP via GitHub Actions", "command": "make gcp-down", "platform": "gcp"},
+    {"description": "Conectar kubectl ao cluster GKE (us-central1-a)", "command": "gcloud container clusters get-credentials aiops-gke --zone us-central1-a --project ia-infra-gcp-project-01", "platform": "gcp"},
+    {"description": "Verificar workloads e serviços no namespace apps (GKE)", "command": "kubectl get pods,svc -n apps", "platform": "gcp"},
+    # Comandos CI/CD e Agentes de IA
+    {"description": "Demonstração completa de Self-Healing em loop fechado", "command": "make local-aiops-demo", "platform": "aiops"},
+    {"description": "Injetar anomalia de probe crash no cluster", "command": "make local-aiops-chaos SCENARIO=probe-crash", "platform": "aiops"},
+    {"description": "Executar Agente 1 (Diagnóstico IA de Logs & Métricas)", "command": "make local-aiops-analyze", "platform": "aiops"},
+    {"description": "Executar Agente 2 (Gerador de Pull Request & Fix)", "command": "make local-aiops-fix ISSUE=probe-crash", "platform": "aiops"},
+    {"description": "Executar Agente 3 (Validação da Correção)", "command": "make local-aiops-verify ISSUE=probe-crash", "platform": "aiops"},
+    {"description": "CLI unificado de Engenharia de Caos e Troubleshooting", "command": "make tshoot", "platform": "aiops"},
+]
+
 
 def run_cmd(cmd_list, timeout=10):
     """Executa um comando de forma segura com timeout."""
@@ -236,6 +295,9 @@ def sync_panel(target_env=None, do_open=False, generate_summary=False):
     for svc in catalog.get("services", []):
         svc_id = svc.get("id")
 
+        # Garante mapeamento de plataformas suportadas
+        svc["platforms"] = DEFAULT_PLATFORMS.get(svc_id, svc.get("platforms", ["local", "gcp"]))
+
         # Atualiza porta local se aplicável
         if svc_id in port_mapping and not svc.get("is_external"):
             p = port_mapping[svc_id]
@@ -300,6 +362,9 @@ def sync_panel(target_env=None, do_open=False, generate_summary=False):
                 svc["latest_report_url"] = k6_reports[0]["relative_url"]
             else:
                 svc.pop("latest_report_url", None)
+
+    # 4. Enriquecimento de comandos rápidos por plataforma
+    catalog["quick_commands"] = DEFAULT_QUICK_COMMANDS
 
     # Escreve links.json
     with open(LINKS_JSON_PATH, "w", encoding="utf-8") as f:

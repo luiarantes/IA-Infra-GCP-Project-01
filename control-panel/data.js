@@ -5,7 +5,7 @@ window.AIOPS_DATA = {
   "cluster_name": "aiops-gke",
   "cluster_location": "us-central1-a",
   "active_env": "local",
-  "last_synced_at": "2026-09-19T02:59:47.919108+00:00",
+  "last_synced_at": "2026-09-19T03:13:30.963130+00:00",
   "services": [
     {
       "id": "openobserve",
@@ -22,7 +22,11 @@ window.AIOPS_DATA = {
         "pass": "ComplexPassword123#"
       },
       "health_path": "/api/default/version",
-      "is_external": false
+      "is_external": false,
+      "platforms": [
+        "local",
+        "gcp"
+      ]
     },
     {
       "id": "grafana",
@@ -39,7 +43,11 @@ window.AIOPS_DATA = {
         "pass": "admin"
       },
       "health_path": "/api/health",
-      "is_external": false
+      "is_external": false,
+      "platforms": [
+        "local",
+        "gcp"
+      ]
     },
     {
       "id": "pyroscope",
@@ -53,7 +61,11 @@ window.AIOPS_DATA = {
       "gcp_url": "http://<PENDING>:4040",
       "credentials": null,
       "health_path": null,
-      "is_external": false
+      "is_external": false,
+      "platforms": [
+        "local",
+        "gcp"
+      ]
     },
     {
       "id": "chaos_dashboard",
@@ -67,7 +79,11 @@ window.AIOPS_DATA = {
       "gcp_url": "http://<PENDING>:2333",
       "credentials": null,
       "health_path": "/api/common/version",
-      "is_external": false
+      "is_external": false,
+      "platforms": [
+        "local",
+        "gcp"
+      ]
     },
     {
       "id": "k6_dashboard",
@@ -84,7 +100,10 @@ window.AIOPS_DATA = {
       "is_external": false,
       "is_on_demand": true,
       "reports_count": 2,
-      "latest_report_url": "../load-test/reports/k6-report-20260918_235932.html"
+      "latest_report_url": "../load-test/reports/k6-report-20260918_235932.html",
+      "platforms": [
+        "local"
+      ]
     },
     {
       "id": "gcp_monitoring",
@@ -97,7 +116,10 @@ window.AIOPS_DATA = {
       "gcp_url": "https://console.cloud.google.com/monitoring/dashboards?project=ia-infra-gcp-project-01",
       "credentials": null,
       "health_path": null,
-      "is_external": true
+      "is_external": true,
+      "platforms": [
+        "gcp"
+      ]
     },
     {
       "id": "gcp_metrics_explorer",
@@ -110,7 +132,10 @@ window.AIOPS_DATA = {
       "gcp_url": "https://console.cloud.google.com/monitoring/metrics-explorer?project=ia-infra-gcp-project-01",
       "credentials": null,
       "health_path": null,
-      "is_external": true
+      "is_external": true,
+      "platforms": [
+        "gcp"
+      ]
     },
     {
       "id": "gcp_logging",
@@ -123,7 +148,10 @@ window.AIOPS_DATA = {
       "gcp_url": "https://console.cloud.google.com/logs/query?project=ia-infra-gcp-project-01",
       "credentials": null,
       "health_path": null,
-      "is_external": true
+      "is_external": true,
+      "platforms": [
+        "gcp"
+      ]
     },
     {
       "id": "gcp_alerting",
@@ -136,7 +164,10 @@ window.AIOPS_DATA = {
       "gcp_url": "https://console.cloud.google.com/monitoring/alerting?project=ia-infra-gcp-project-01",
       "credentials": null,
       "health_path": null,
-      "is_external": true
+      "is_external": true,
+      "platforms": [
+        "gcp"
+      ]
     },
     {
       "id": "gcp_trace",
@@ -149,7 +180,10 @@ window.AIOPS_DATA = {
       "gcp_url": "https://console.cloud.google.com/traces/overview?project=ia-infra-gcp-project-01",
       "credentials": null,
       "health_path": null,
-      "is_external": true
+      "is_external": true,
+      "platforms": [
+        "gcp"
+      ]
     },
     {
       "id": "buscacep_web",
@@ -163,7 +197,11 @@ window.AIOPS_DATA = {
       "gcp_url": "http://<PENDING>/",
       "credentials": null,
       "health_path": "/healthz",
-      "is_external": false
+      "is_external": false,
+      "platforms": [
+        "local",
+        "gcp"
+      ]
     },
     {
       "id": "buscacep_docs",
@@ -177,7 +215,11 @@ window.AIOPS_DATA = {
       "gcp_url": "http://<PENDING>/docs",
       "credentials": null,
       "health_path": "/healthz",
-      "is_external": false
+      "is_external": false,
+      "platforms": [
+        "local",
+        "gcp"
+      ]
     },
     {
       "id": "buscacep_redoc",
@@ -191,7 +233,11 @@ window.AIOPS_DATA = {
       "gcp_url": "http://<PENDING>/redoc",
       "credentials": null,
       "health_path": "/healthz",
-      "is_external": false
+      "is_external": false,
+      "platforms": [
+        "local",
+        "gcp"
+      ]
     },
     {
       "id": "buscacep_health",
@@ -205,7 +251,11 @@ window.AIOPS_DATA = {
       "gcp_url": "http://<PENDING>/healthz",
       "credentials": null,
       "health_path": "/healthz",
-      "is_external": false
+      "is_external": false,
+      "platforms": [
+        "local",
+        "gcp"
+      ]
     },
     {
       "id": "gateway_docs",
@@ -219,7 +269,11 @@ window.AIOPS_DATA = {
       "gcp_url": "http://<PENDING>:8080/docs",
       "credentials": null,
       "health_path": "/healthz",
-      "is_external": false
+      "is_external": false,
+      "platforms": [
+        "local",
+        "gcp"
+      ]
     },
     {
       "id": "gateway",
@@ -233,7 +287,11 @@ window.AIOPS_DATA = {
       "gcp_url": "http://<PENDING>:8080/healthz",
       "credentials": null,
       "health_path": "/healthz",
-      "is_external": false
+      "is_external": false,
+      "platforms": [
+        "local",
+        "gcp"
+      ]
     },
     {
       "id": "pubsub_emulator",
@@ -247,7 +305,10 @@ window.AIOPS_DATA = {
       "gcp_url": "https://console.cloud.google.com/cloudpubsub/topic/list?project=ia-infra-gcp-project-01",
       "credentials": null,
       "health_path": null,
-      "is_external": false
+      "is_external": false,
+      "platforms": [
+        "local"
+      ]
     },
     {
       "id": "minio_console",
@@ -264,7 +325,10 @@ window.AIOPS_DATA = {
         "pass": "minioadmin"
       },
       "health_path": null,
-      "is_external": false
+      "is_external": false,
+      "platforms": [
+        "local"
+      ]
     },
     {
       "id": "gcp_gke",
@@ -277,7 +341,10 @@ window.AIOPS_DATA = {
       "gcp_url": "https://console.cloud.google.com/kubernetes/workload/overview?project=ia-infra-gcp-project-01",
       "credentials": null,
       "health_path": null,
-      "is_external": true
+      "is_external": true,
+      "platforms": [
+        "gcp"
+      ]
     },
     {
       "id": "gcp_artifact_registry",
@@ -290,7 +357,10 @@ window.AIOPS_DATA = {
       "gcp_url": "https://console.cloud.google.com/artifacts/docker/ia-infra-gcp-project-01/us-central1/sample-app?project=ia-infra-gcp-project-01",
       "credentials": null,
       "health_path": null,
-      "is_external": true
+      "is_external": true,
+      "platforms": [
+        "gcp"
+      ]
     },
     {
       "id": "gcp_billing",
@@ -303,7 +373,10 @@ window.AIOPS_DATA = {
       "gcp_url": "https://console.cloud.google.com/billing/012B38-2503FB-1D53DF?project=ia-infra-gcp-project-01",
       "credentials": null,
       "health_path": null,
-      "is_external": true
+      "is_external": true,
+      "platforms": [
+        "gcp"
+      ]
     },
     {
       "id": "gcp_storage_tfstate",
@@ -316,7 +389,10 @@ window.AIOPS_DATA = {
       "gcp_url": "https://console.cloud.google.com/storage/browser/ia-infra-gcp-project-01-tfstate?project=ia-infra-gcp-project-01",
       "credentials": null,
       "health_path": null,
-      "is_external": true
+      "is_external": true,
+      "platforms": [
+        "gcp"
+      ]
     },
     {
       "id": "gcp_iam_workload_identity",
@@ -329,7 +405,10 @@ window.AIOPS_DATA = {
       "gcp_url": "https://console.cloud.google.com/iam-admin/iam?project=ia-infra-gcp-project-01",
       "credentials": null,
       "health_path": null,
-      "is_external": true
+      "is_external": true,
+      "platforms": [
+        "gcp"
+      ]
     },
     {
       "id": "github_actions_infra",
@@ -342,7 +421,10 @@ window.AIOPS_DATA = {
       "gcp_url": "https://github.com/luiarantes/IA-Infra-GCP-Project-01/actions",
       "credentials": null,
       "health_path": null,
-      "is_external": true
+      "is_external": true,
+      "platforms": [
+        "aiops"
+      ]
     },
     {
       "id": "github_actions_app",
@@ -355,7 +437,10 @@ window.AIOPS_DATA = {
       "gcp_url": "https://github.com/luiarantes/IA-App-GCP-Project-01/actions",
       "credentials": null,
       "health_path": null,
-      "is_external": true
+      "is_external": true,
+      "platforms": [
+        "aiops"
+      ]
     },
     {
       "id": "agent_findings",
@@ -368,7 +453,10 @@ window.AIOPS_DATA = {
       "gcp_url": "https://github.com/luiarantes/IA-Infra-GCP-Project-01/issues?q=label%3Aagent-finding",
       "credentials": null,
       "health_path": null,
-      "is_external": true
+      "is_external": true,
+      "platforms": [
+        "aiops"
+      ]
     },
     {
       "id": "agent_prs",
@@ -381,49 +469,107 @@ window.AIOPS_DATA = {
       "gcp_url": "https://github.com/luiarantes/IA-Infra-GCP-Project-01/pulls?q=label%3Aagent-fix",
       "credentials": null,
       "health_path": null,
-      "is_external": true
+      "is_external": true,
+      "platforms": [
+        "aiops"
+      ]
     }
   ],
   "quick_commands": [
     {
       "description": "Sincronizar e abrir o painel de controle",
-      "command": "make panel"
+      "command": "make panel",
+      "platform": "all"
     },
     {
       "description": "Iniciar tráfego contínuo de observabilidade (k6)",
-      "command": "make local-traffic-start"
+      "command": "make local-traffic-start",
+      "platform": "local"
     },
     {
       "description": "Parar gerador de tráfego contínuo",
-      "command": "make local-traffic-stop"
+      "command": "make local-traffic-stop",
+      "platform": "local"
     },
     {
       "description": "Testar fluxo end-to-end via terminal",
-      "command": "make local-test"
+      "command": "make local-test",
+      "platform": "local"
     },
     {
       "description": "Verificar pods e consumo CPU/Memória",
-      "command": "make local-status"
-    },
-    {
-      "description": "Executar Agente 1 (Diagnóstico IA)",
-      "command": "make local-aiops-analyze"
+      "command": "make local-status",
+      "platform": "local"
     },
     {
       "description": "Abrir Chaos Mesh Dashboard no navegador",
-      "command": "make chaos-ui"
+      "command": "make chaos-ui",
+      "platform": "local"
     },
     {
       "description": "Executar teste de carga com k6 Web Dashboard ao vivo",
-      "command": "make k6-ui"
+      "command": "make k6-ui",
+      "platform": "local"
     },
     {
       "description": "Executar Smoke Test rápido de validação E2E (k6)",
-      "command": "make smoke-test"
+      "command": "make smoke-test",
+      "platform": "local"
     },
     {
       "description": "Gerar relatório gráfico HTML exportável do k6",
-      "command": "make k6-report"
+      "command": "make k6-report",
+      "platform": "local"
+    },
+    {
+      "description": "Disparar Terraform Apply no GCP via GitHub Actions",
+      "command": "make gcp-up",
+      "platform": "gcp"
+    },
+    {
+      "description": "Disparar Terraform Destroy no GCP via GitHub Actions",
+      "command": "make gcp-down",
+      "platform": "gcp"
+    },
+    {
+      "description": "Conectar kubectl ao cluster GKE (us-central1-a)",
+      "command": "gcloud container clusters get-credentials aiops-gke --zone us-central1-a --project ia-infra-gcp-project-01",
+      "platform": "gcp"
+    },
+    {
+      "description": "Verificar workloads e serviços no namespace apps (GKE)",
+      "command": "kubectl get pods,svc -n apps",
+      "platform": "gcp"
+    },
+    {
+      "description": "Demonstração completa de Self-Healing em loop fechado",
+      "command": "make local-aiops-demo",
+      "platform": "aiops"
+    },
+    {
+      "description": "Injetar anomalia de probe crash no cluster",
+      "command": "make local-aiops-chaos SCENARIO=probe-crash",
+      "platform": "aiops"
+    },
+    {
+      "description": "Executar Agente 1 (Diagnóstico IA de Logs & Métricas)",
+      "command": "make local-aiops-analyze",
+      "platform": "aiops"
+    },
+    {
+      "description": "Executar Agente 2 (Gerador de Pull Request & Fix)",
+      "command": "make local-aiops-fix ISSUE=probe-crash",
+      "platform": "aiops"
+    },
+    {
+      "description": "Executar Agente 3 (Validação da Correção)",
+      "command": "make local-aiops-verify ISSUE=probe-crash",
+      "platform": "aiops"
+    },
+    {
+      "description": "CLI unificado de Engenharia de Caos e Troubleshooting",
+      "command": "make tshoot",
+      "platform": "aiops"
     }
   ],
   "k6_reports": [
