@@ -160,10 +160,9 @@ def discover_k6_reports():
     if REPORTS_DIR.exists():
         found_files.extend(list(REPORTS_DIR.glob("*.html")))
 
-    # Inclui o load-test/report.html legado se existir e não for duplicata
-    if LEGACY_REPORT_PATH.exists():
-        if not any(f.resolve() == LEGACY_REPORT_PATH.resolve() for f in found_files):
-            found_files.append(LEGACY_REPORT_PATH)
+    # Inclui o load-test/report.html legado apenas se reports/ estiver vazio
+    if LEGACY_REPORT_PATH.exists() and not found_files:
+        found_files.append(LEGACY_REPORT_PATH)
 
     # Ordena por data de modificação decrescente (mais recente primeiro)
     found_files.sort(key=lambda p: p.stat().st_mtime, reverse=True)

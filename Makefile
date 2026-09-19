@@ -158,7 +158,7 @@ k6-ui:
 	@mkdir -p load-test/reports
 	@TS=$$(date +'%Y%m%d_%H%M%S'); \
 	REPORT="load-test/reports/k6-report-$$TS.html"; \
-	K6_WEB_DASHBOARD=true K6_WEB_DASHBOARD_OPEN=true K6_WEB_DASHBOARD_EXPORT="$$REPORT" k6 run -e GATEWAY_URL="http://localhost:8080" load-test/script.js || true; \
+	K6_WEB_DASHBOARD=true K6_WEB_DASHBOARD_PERIOD=1s K6_WEB_DASHBOARD_OPEN=true K6_WEB_DASHBOARD_EXPORT="$$REPORT" k6 run -e GATEWAY_URL="http://localhost:8080" load-test/script.js || true; \
 	if [ -f "$$REPORT" ]; then \
 		cp -f "$$REPORT" load-test/report.html 2>/dev/null || true; \
 		echo "✅ Relatório salvo em: $$REPORT e load-test/report.html"; \
@@ -170,7 +170,7 @@ k6-report:
 	@mkdir -p load-test/reports
 	@TS=$$(date +'%Y%m%d_%H%M%S'); \
 	REPORT="load-test/reports/k6-report-$$TS.html"; \
-	k6 run -o web-dashboard=export="$$REPORT" -e GATEWAY_URL="http://localhost:8080" load-test/script.js || true; \
+	K6_WEB_DASHBOARD_PERIOD=1s k6 run -o web-dashboard=export="$$REPORT" -e GATEWAY_URL="http://localhost:8080" load-test/script.js || true; \
 	if [ -f "$$REPORT" ]; then \
 		cp -f "$$REPORT" load-test/report.html 2>/dev/null || true; \
 		echo "✅ Relatório gerado com sucesso em: $$REPORT e load-test/report.html"; \

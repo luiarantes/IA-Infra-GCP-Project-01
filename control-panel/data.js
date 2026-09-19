@@ -5,7 +5,7 @@ window.AIOPS_DATA = {
   "cluster_name": "aiops-gke",
   "cluster_location": "us-central1-a",
   "active_env": "local",
-  "last_synced_at": "2026-09-19T02:35:13.402741+00:00",
+  "last_synced_at": "2026-09-19T02:45:40.772940+00:00",
   "services": [
     {
       "id": "openobserve",
@@ -83,7 +83,8 @@ window.AIOPS_DATA = {
       "health_path": null,
       "is_external": false,
       "is_on_demand": true,
-      "reports_count": 0
+      "reports_count": 1,
+      "latest_report_url": "../load-test/reports/k6-report-20260918_234529.html"
     },
     {
       "id": "gcp_monitoring",
@@ -425,5 +426,15 @@ window.AIOPS_DATA = {
       "command": "make k6-report"
     }
   ],
-  "k6_reports": []
+  "k6_reports": [
+    {
+      "id": "k6_report_k6-report-20260918_234529",
+      "filename": "k6-report-20260918_234529.html",
+      "title": "Relatório de Carga k6 (18/09/2026 23:44:59)",
+      "timestamp": "18/09/2026 23:44:59",
+      "size": "163.8 KB",
+      "relative_url": "../load-test/reports/k6-report-20260918_234529.html",
+      "is_latest": true
+    }
+  ]
 };
