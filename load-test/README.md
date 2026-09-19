@@ -38,10 +38,10 @@ kubectl logs -f job/k6-load-test
 
 ## Modo Gráfico e Dashboards (k6 Web UI)
 
-O k6 possui suporte nativo a visualização gráfica em tempo real e relatórios interativos:
+O k6 possui suporte nativo a visualização gráfica em tempo real e relatórios interativos com persistência histórica:
 
-### 1. Web Dashboard Interativo ao Vivo
-Inicia o teste abrindo o dashboard web nativo do k6 no navegador na porta `5665`:
+### 1. Web Dashboard Interativo ao Vivo + Exportação Automática
+Inicia o teste abrindo o dashboard web nativo do k6 no navegador na porta `5665`, exportando automaticamente o relatório consolidado com timestamp ao final da execução:
 ```bash
 make k6-ui
 ```
@@ -52,5 +52,27 @@ Executa o teste e gera um arquivo estático `.html` rico com gráficos de Throug
 ```bash
 make k6-report
 ```
-O relatório é gerado em `load-test/report.html` e aberto automaticamente no navegador padrão.
+
+### 3. Persistência e Integração com o Painel de Controle
+- Todos os relatórios gerados por `make k6-ui` e `make k6-report` são salvos automaticamente com timestamp em:
+  `load-test/reports/k6-report-YYYYMMDD_HHMMSS.html`
+- A cópia mais recente é mantida em `load-test/report.html`.
+- O histórico completo de relatórios fica catalogado diretamente no **Painel de Controle AIOps** (`make panel`), permitindo consultar execuções passadas com um clique e sem necessidade de terminal.
+
+---
+
+## Validação Pós-Deploy (Smoke Test E2E)
+
+Para validar a integridade de rede, resolução de DNS e comunicação entre microsserviços imediatamente após o rollout sem o custo ou tempo de um teste de carga pesado:
+
+- **Script**: [`smoke-test.js`](smoke-test.js) (1 VU, 5 iterações rápidas validando `GET /healthz` e `POST /work`).
+- **Pipeline Automática**: Executado automaticamente no workflow `.github/workflows/deploy-microservices.yml` através do Job [`smoke-job.yaml`](smoke-job.yaml) dentro do namespace `apps`.
+- **Execução Local Rápida (via Gateway na porta :8080)**:
+  ```bash
+  make smoke-test
+  ```
+- **Execução no Cluster Kind (Job Kubernetes)**:
+  ```bash
+  make local-smoke-test
+  ```
 

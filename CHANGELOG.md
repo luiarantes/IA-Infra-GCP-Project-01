@@ -8,6 +8,9 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 ## [Unreleased]
 
 ### Added
+- **ci/cd**: Validação pós-deploy automatizada (Smoke Test E2E com k6) no workflow `deploy-microservices.yml` via Job Kubernetes efêmero no namespace `apps`, validando conectividade de rede, DNS e status HTTP 200/202 na cadeia completa de microsserviços.
+- **k6**: Implementação de script dedicado de smoke test (`load-test/smoke-test.js`) e manifest de Job (`load-test/smoke-job.yaml`), com targets `make smoke-test` e `make local-smoke-test`.
+- **control-panel**: Persistência histórica de relatórios gráficos HTML do k6 em `load-test/reports/` com timestamp, cópia canônica `load-test/report.html`, e nova seção no Painel de Controle com catálogo dinâmico de relatórios passados e links de acesso direto em um clique.
 - **control-panel**: Adição de favicon SVG vetorial e unificação do logotipo do cabeçalho com identidade visual de radar e telemetria AIOps, garantindo renderização nítida sem dependências externas.
 - **k8s**: Declaração explícita e isolamento de namespaces dedicados (`apps`, `observability` e `infra`) em `local/manifests/namespaces.yaml`, eliminando o uso do namespace `default`.
 - **control-panel**: Expansão do catálogo de ferramentas com novos cards para BuscaCEP Frontend Web, Gateway Swagger OpenAPI, ReDoc, Central de Alertas e Incidentes GCP, Google Cloud Trace, Cloud Storage Terraform State e IAM Workload Identity Federation.

@@ -46,4 +46,6 @@ __pycache__/
 
 # Testes de Carga / Relatórios
 load-test/*.html
+load-test/reports/*.html
+!load-test/reports/.gitkeep
 

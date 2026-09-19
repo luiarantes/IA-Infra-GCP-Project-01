@@ -5,7 +5,7 @@ window.AIOPS_DATA = {
   "cluster_name": "aiops-gke",
   "cluster_location": "us-central1-a",
   "active_env": "local",
-  "last_synced_at": "2026-09-18T18:32:34.920834+00:00",
+  "last_synced_at": "2026-09-19T02:35:13.402741+00:00",
   "services": [
     {
       "id": "openobserve",
@@ -82,7 +82,8 @@ window.AIOPS_DATA = {
       "credentials": null,
       "health_path": null,
       "is_external": false,
-      "is_on_demand": true
+      "is_on_demand": true,
+      "reports_count": 0
     },
     {
       "id": "gcp_monitoring",
@@ -416,8 +417,13 @@ window.AIOPS_DATA = {
       "command": "make k6-ui"
     },
     {
+      "description": "Executar Smoke Test rápido de validação E2E (k6)",
+      "command": "make smoke-test"
+    },
+    {
       "description": "Gerar relatório gráfico HTML exportável do k6",
       "command": "make k6-report"
     }
-  ]
+  ],
+  "k6_reports": []
 };

@@ -23,6 +23,8 @@ DATA_JS_PATH = CONTROL_PANEL_DIR / "data.js"
 KIND_CONFIG_PATH = INFRA_DIR / "local" / "kind-config.yaml"
 LOCAL_TFVARS_PATH = INFRA_DIR / "infra" / "environments" / "local" / "terraform.tfvars"
 LOCAL_VARS_PATH = INFRA_DIR / "infra" / "environments" / "local" / "variables.tf"
+REPORTS_DIR = INFRA_DIR / "load-test" / "reports"
+LEGACY_REPORT_PATH = INFRA_DIR / "load-test" / "report.html"
 
 
 def run_cmd(cmd_list, timeout=10):
@@ -150,6 +152,44 @@ def discover_gcp_load_balancers():
     return lb_ips
 
 
+def discover_k6_reports():
+    """Descobre e cataloga relatórios HTML gerados por execuções do k6."""
+    reports = []
+    found_files = []
+
+    if REPORTS_DIR.exists():
+        found_files.extend(list(REPORTS_DIR.glob("*.html")))
+
+    # Inclui o load-test/report.html legado se existir e não for duplicata
+    if LEGACY_REPORT_PATH.exists():
+        if not any(f.resolve() == LEGACY_REPORT_PATH.resolve() for f in found_files):
+            found_files.append(LEGACY_REPORT_PATH)
+
+    # Ordena por data de modificação decrescente (mais recente primeiro)
+    found_files.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+
+    for idx, path in enumerate(found_files):
+        stat = path.stat()
+        mtime = datetime.datetime.fromtimestamp(stat.st_mtime)
+        size_kb = round(stat.st_size / 1024, 1)
+        size_str = f"{size_kb} KB" if size_kb < 1024 else f"{round(size_kb / 1024, 2)} MB"
+
+        # Caminho relativo a partir de control-panel/index.html
+        rel_path = f"../load-test/reports/{path.name}" if path.parent.name == "reports" else f"../load-test/{path.name}"
+
+        reports.append({
+            "id": f"k6_report_{path.stem}",
+            "filename": path.name,
+            "title": f"Relatório de Carga k6 ({mtime.strftime('%d/%m/%Y %H:%M:%S')})",
+            "timestamp": mtime.strftime("%d/%m/%Y %H:%M:%S"),
+            "size": size_str,
+            "relative_url": rel_path,
+            "is_latest": (idx == 0)
+        })
+
+    return reports
+
+
 def sync_panel(target_env=None, do_open=False, generate_summary=False):
     """Executa a sincronização dos dados do painel e atualiza os arquivos."""
     if not LINKS_JSON_PATH.exists():
@@ -250,6 +290,18 @@ def sync_panel(target_env=None, do_open=False, generate_summary=False):
                     port_str = f":{lb['port']}" if lb['port'] != 80 else ""
                     svc["gcp_url"] = f"http://{ip}{port_str}" if ip != "<PENDING>" else "http://<PENDING>:2333"
 
+    # 3. Descoberta de relatórios históricos do k6
+    k6_reports = discover_k6_reports()
+    catalog["k6_reports"] = k6_reports
+
+    for svc in catalog.get("services", []):
+        if svc.get("id") == "k6_dashboard":
+            svc["reports_count"] = len(k6_reports)
+            if k6_reports:
+                svc["latest_report_url"] = k6_reports[0]["relative_url"]
+            else:
+                svc.pop("latest_report_url", None)
+
     # Escreve links.json
     with open(LINKS_JSON_PATH, "w", encoding="utf-8") as f:
         json.dump(catalog, f, indent=2, ensure_ascii=False)
@@ -322,6 +374,16 @@ def generate_markdown_summary(catalog, active_env):
             note = "-"
 
         lines.append(f"| {cat} | **{name}** | [{url}]({url}) | {note} |")
+
+    k6_reports = catalog.get("k6_reports", [])
+    if k6_reports:
+        lines.append("")
+        lines.append(f"#### 📊 Relatórios Salvos de Teste de Carga (k6) ({len(k6_reports)} encontrados)")
+        lines.append("| Relatório | Data / Hora | Tamanho |")
+        lines.append("|---|---|---|")
+        for rep in k6_reports[:5]:
+            latest_badge = " **(Mais Recente)**" if rep.get("is_latest") else ""
+            lines.append(f"| `{rep['filename']}`{latest_badge} | {rep['timestamp']} | {rep['size']} |")
 
     lines.append("")
     lines.append(f"💡 Para abrir o painel gráfico completo no navegador, execute: `make panel`")

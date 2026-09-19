@@ -1,4 +1,4 @@
-.PHONY: help local-up local-up-simple local-up-distributed local-down local-status local-test local-agent local-load-test local-chaos-test local-traffic-start local-traffic-stop local-dashboards-reload obs-ui grafana-ui pyroscope-ui minio-ui chaos-ui k6-ui k6-report panel panel-sync local-aiops-ollama-up local-aiops-ollama-down local-aiops-chaos local-aiops-analyze local-aiops-fix local-aiops-verify local-aiops-demo gcp-up gcp-down aws-up aws-down
+.PHONY: help local-up local-up-simple local-up-distributed local-down local-status local-test local-agent local-smoke-test smoke-test local-load-test local-chaos-test local-traffic-start local-traffic-stop local-dashboards-reload obs-ui grafana-ui pyroscope-ui minio-ui chaos-ui k6-ui k6-report panel panel-sync local-aiops-ollama-up local-aiops-ollama-down local-aiops-chaos local-aiops-analyze local-aiops-fix local-aiops-verify local-aiops-demo gcp-up gcp-down aws-up aws-down
 
 help:
 	@echo "========================================================================="
@@ -15,6 +15,8 @@ help:
 	@echo "    make local-status        - Exibe status dos pods e consumo de CPU/Memoria"
 	@echo "    make local-test          - Envia requisicoes de teste para os servicos"
 	@echo "    make local-agent         - Executa container do Agente Self-Healing"
+	@echo "    make smoke-test          - Executa Smoke Test rápido com k6 contra o gateway local"
+	@echo "    make local-smoke-test    - Executa Smoke Test no cluster local Kind (Job Kubernetes)"
 	@echo "    make local-load-test     - Executa teste de carga k6 pontual no cluster local"
 	@echo "    make local-traffic-start - Inicia gerador de trafego continuo em background"
 	@echo "    make local-traffic-stop  - Para gerador de trafego continuo"
@@ -88,6 +90,20 @@ local-agent:
 	@chmod +x local/scripts/local-env.sh
 	@./local/scripts/local-env.sh agent
 
+smoke-test:
+	@echo "🚀 Executando Smoke Test local com k6 contra o gateway..."
+	@k6 run -e GATEWAY_URL="http://localhost:8080" load-test/smoke-test.js
+
+local-smoke-test:
+	@echo "🚀 Criando ConfigMap do script de Smoke Test..."
+	@kubectl create configmap k6-smoke-script -n apps --from-file=smoke-test.js=load-test/smoke-test.js --dry-run=client -o yaml | kubectl apply -f -
+	@echo "🚀 Disparando Job de Smoke Test no cluster local..."
+	@kubectl delete job k6-smoke-test -n apps 2>/dev/null || true
+	@kubectl apply -f load-test/smoke-job.yaml
+	@echo "⏳ Aguardando conclusão do Smoke Test..."
+	@kubectl wait --for=condition=complete --timeout=60s job/k6-smoke-test -n apps || (kubectl logs job/k6-smoke-test -n apps && exit 1)
+	@kubectl logs job/k6-smoke-test -n apps
+
 local-load-test:
 	@echo "🚀 Criando ConfigMap do script k6..."
 	@kubectl create configmap k6-script -n apps --from-file=script.js=load-test/script.js --dry-run=client -o yaml | kubectl apply -f -
@@ -137,15 +153,30 @@ chaos-ui:
 	@open http://localhost:2333 2>/dev/null || echo "Acesse: http://localhost:2333"
 
 k6-ui:
-	@echo "🚀 Iniciando teste de carga com k6 Web Dashboard ao vivo..."
-	@echo "📊 O Dashboard será aberto em: http://127.0.0.1:5665"
-	@K6_WEB_DASHBOARD=true K6_WEB_DASHBOARD_OPEN=true k6 run -e GATEWAY_URL="http://localhost:8080" load-test/script.js
+	@echo "🚀 Iniciando teste de carga com k6 Web Dashboard ao vivo e exportação..."
+	@echo "📊 O Dashboard ao vivo estará em: http://127.0.0.1:5665"
+	@mkdir -p load-test/reports
+	@TS=$$(date +'%Y%m%d_%H%M%S'); \
+	REPORT="load-test/reports/k6-report-$$TS.html"; \
+	K6_WEB_DASHBOARD=true K6_WEB_DASHBOARD_OPEN=true K6_WEB_DASHBOARD_EXPORT="$$REPORT" k6 run -e GATEWAY_URL="http://localhost:8080" load-test/script.js || true; \
+	if [ -f "$$REPORT" ]; then \
+		cp -f "$$REPORT" load-test/report.html 2>/dev/null || true; \
+		echo "✅ Relatório salvo em: $$REPORT e load-test/report.html"; \
+	fi
+	@python3 scripts/sync_control_panel.py
 
 k6-report:
 	@echo "📊 Executando teste de carga e compilando relatório gráfico HTML..."
-	@k6 run -o web-dashboard=export=load-test/report.html -e GATEWAY_URL="http://localhost:8080" load-test/script.js
-	@echo "✅ Relatório gerado com sucesso em: load-test/report.html"
-	@open load-test/report.html 2>/dev/null || echo "Abra load-test/report.html no navegador"
+	@mkdir -p load-test/reports
+	@TS=$$(date +'%Y%m%d_%H%M%S'); \
+	REPORT="load-test/reports/k6-report-$$TS.html"; \
+	k6 run -o web-dashboard=export="$$REPORT" -e GATEWAY_URL="http://localhost:8080" load-test/script.js || true; \
+	if [ -f "$$REPORT" ]; then \
+		cp -f "$$REPORT" load-test/report.html 2>/dev/null || true; \
+		echo "✅ Relatório gerado com sucesso em: $$REPORT e load-test/report.html"; \
+		open "$$REPORT" 2>/dev/null || open load-test/report.html 2>/dev/null || echo "Abra $$REPORT no navegador"; \
+	fi
+	@python3 scripts/sync_control_panel.py
 
 panel:
 	@python3 scripts/sync_control_panel.py --open
