@@ -28,6 +28,7 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 - **local**: Ajuste de serviços `LoadBalancer` para `ClusterIP` em tempo de execução local, eliminando status `<pending>` e conflito com a porta `30901` do MinIO.
 
 ### Changed
+- **ci/cd**: Desacoplamento do workflow de deploy em nuvem do Sample App (`.github/workflows/deploy-app.yml`), que passa a operar exclusivamente via `workflow_dispatch`, prevenindo tentativas de deploy automático contra clusters efêmeros inativos no GCP durante pushes na branch principal.
 - **hpa**: Implementação de políticas de amortecimento (`behavior`) nos Horizontal Pod Autoscalers dos microsserviços (`gateway`, `service-api`, `service-worker`, `service-downstream` e template padrão) com `stabilizationWindowSeconds: 60` no scale-up e `300s` no scale-down, e elevação do target de utilização média para 80%, eliminando flapping e contenção de CPU por cold start concorrente de pods.
 - **k8s**: Migração completa dos workloads de aplicação (`gateway`, `service-api`, `service-worker`, `service-downstream`, `podinfo`, `buscacep`) para o namespace `apps`.
 - **observability**: Migração da stack LGTM, OpenObserve, OTel Collector, Beyla e Ollama para o namespace `observability`, com reconfiguração de endpoints e exporters via FQDN entre namespaces (`minio.infra:9000`, `otel-collector.observability:4318`, `loki.observability:3100`, `tempo.observability:3200`, `pyroscope.observability:4040`).

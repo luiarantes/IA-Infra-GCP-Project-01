@@ -1,11 +1,6 @@
 name: Deploy Sample App
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "apps/**"
-      - "observability/**"
   workflow_dispatch: {}
 
 permissions:
