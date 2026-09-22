@@ -92,12 +92,17 @@ jobs:
           echo "=== K8S NODES ==="
           kubectl get nodes -o wide
 
-          echo "=== K8S PODS ==="
-          kubectl get pods -o wide
+          echo "=== K8S PODS (ALL NAMESPACES) ==="
+          kubectl get pods -A -o wide
 
-          echo "=== OLLAMA GPU LOGS / NVIDIA-SMI ==="
-          kubectl logs deployment/ollama --tail=30 || true
-          kubectl exec deployment/ollama -- nvidia-smi || true
+          echo "=== K8S SERVICES (ALL NAMESPACES) ==="
+          kubectl get svc -A
+
+          echo "=== K8S HPA (ALL NAMESPACES) ==="
+          kubectl get hpa -A
+
+          echo "=== JOBS (APPS NAMESPACE) ==="
+          kubectl get jobs -n apps -o wide || true
 
           echo "=== NODE POOLS LIST ==="
           gcloud container node-pools list --cluster aiops-gke --zone us-central1-a
@@ -125,27 +130,27 @@ jobs:
         if: github.event.inputs.action == 'inject_probe_crash'
         run: |
           echo "💥 Injetando falha de liveness probe em service-api (/healthz-invalid)..."
-          kubectl patch deployment service-api --type='json' -p='[{"op": "replace", "path": "/spec/template/spec/containers/0/livenessProbe/httpGet/path", "value": "/healthz-invalid"},{"op": "replace", "path": "/spec/template/spec/containers/0/livenessProbe/periodSeconds", "value": 5}]'
+          kubectl patch deployment service-api -n apps --type='json' -p='[{"op": "replace", "path": "/spec/template/spec/containers/0/livenessProbe/httpGet/path", "value": "/healthz-invalid"},{"op": "replace", "path": "/spec/template/spec/containers/0/livenessProbe/periodSeconds", "value": 5}]'
           echo "⏳ Aguardando 25s para o Kubelet detectar a falha de probe e iniciar CrashLoop..."
           sleep 25
-          kubectl get pods -l app=service-api -o wide
+          kubectl get pods -l app=service-api -n apps -o wide
 
       - name: Injetar Falha OOMKilled (service-api)
         if: github.event.inputs.action == 'inject_oom_kill'
         run: |
           echo "💥 Injetando limite insuficiente de memória em service-api (16Mi)..."
-          kubectl set resources deployment/service-api --limits=memory=16Mi,cpu=200m --requests=memory=16Mi,cpu=100m
+          kubectl set resources deployment/service-api -n apps --limits=memory=16Mi,cpu=200m --requests=memory=16Mi,cpu=100m
           echo "⏳ Aguardando 25s para o Kubelet/Kernel finalizar o container com OOMKilled (Exit Code 137)..."
           sleep 25
-          kubectl get pods -l app=service-api -o wide
+          kubectl get pods -l app=service-api -n apps -o wide
 
       - name: Restaurar Liveness Probe e Recursos (service-api)
         if: github.event.inputs.action == 'restore_service_api'
         run: |
           echo "🧹 Restaurando service-api para configuração saudável original (128Mi/256Mi e /healthz)..."
-          kubectl patch deployment service-api --type='json' -p='[{"op": "replace", "path": "/spec/template/spec/containers/0/livenessProbe/httpGet/path", "value": "/healthz"},{"op": "replace", "path": "/spec/template/spec/containers/0/livenessProbe/periodSeconds", "value": 10}]' || true
-          kubectl set resources deployment/service-api --limits=memory=256Mi,cpu=250m --requests=memory=128Mi,cpu=150m
-          kubectl rollout status deployment/service-api --timeout=60s
+          kubectl patch deployment service-api -n apps --type='json' -p='[{"op": "replace", "path": "/spec/template/spec/containers/0/livenessProbe/httpGet/path", "value": "/healthz"},{"op": "replace", "path": "/spec/template/spec/containers/0/livenessProbe/periodSeconds", "value": 10}]' || true
+          kubectl set resources deployment/service-api -n apps --limits=memory=256Mi,cpu=250m --requests=memory=128Mi,cpu=150m
+          kubectl rollout status deployment/service-api -n apps --timeout=60s
           echo "✅ service-api restaurado e saudável!"
 
       - uses: hashicorp/setup-terraform@v3

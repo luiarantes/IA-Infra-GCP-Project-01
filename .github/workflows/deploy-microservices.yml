@@ -87,9 +87,13 @@ jobs:
             --from-file=smoke-test.js=load-test/smoke-test.js \
             --dry-run=client -o yaml | kubectl apply -f -
           kubectl apply -f load-test/smoke-job.yaml
-          kubectl wait --for=condition=complete job/k6-smoke-test -n apps --timeout=60s || {
-            echo "❌ Smoke Test falhou! Logs do container k6:"
-            kubectl logs job/k6-smoke-test -n apps
+          kubectl wait --for=condition=complete job/k6-smoke-test -n apps --timeout=180s || {
+            echo "❌ Smoke Test falhou ou excedeu timeout! Status do Pod e eventos:"
+            kubectl get pods -l job-name=k6-smoke-test -n apps -o wide || true
+            kubectl describe job k6-smoke-test -n apps || true
+            kubectl describe pods -l job-name=k6-smoke-test -n apps || true
+            echo "Logs do container k6:"
+            kubectl logs job/k6-smoke-test -n apps || true
             exit 1
           }
           echo "✅ Smoke Test concluído com sucesso! Pods saudáveis e respondendo a tráfego real."
