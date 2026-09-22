@@ -30,6 +30,8 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 - **local**: Ajuste de serviços `LoadBalancer` para `ClusterIP` em tempo de execução local, eliminando status `<pending>` e conflito com a porta `30901` do MinIO.
 
 ### Changed
+- **terraform**: Elevação de `max_node_count` de 2 para 4 no node pool Spot (`spot-node-pool`) no modo padrão (`simple`) e de 4 para 6 no modo distribuído, permitindo que o GKE Cluster Autoscaler acomode réplicas de surto em rolling updates, Jobs efêmeros de teste (k6) e auto-scaling horizontal dos microsserviços sem estagnação em status `Pending`.
+- **ci/cd**: Adição da ação `expand_nodes` no workflow `diagnostics.yml` para ajuste dinâmico de limites do autoscaler de nós diretamente no GKE sob demanda.
 - **ci/cd**: Desacoplamento do workflow de deploy em nuvem do Sample App (`.github/workflows/deploy-app.yml`), que passa a operar exclusivamente via `workflow_dispatch`, prevenindo tentativas de deploy automático contra clusters efêmeros inativos no GCP durante pushes na branch principal.
 - **hpa**: Implementação de políticas de amortecimento (`behavior`) nos Horizontal Pod Autoscalers dos microsserviços (`gateway`, `service-api`, `service-worker`, `service-downstream` e template padrão) com `stabilizationWindowSeconds: 60` no scale-up e `300s` no scale-down, e elevação do target de utilização média para 80%, eliminando flapping e contenção de CPU por cold start concorrente de pods.
 - **k8s**: Migração completa dos workloads de aplicação (`gateway`, `service-api`, `service-worker`, `service-downstream`, `podinfo`, `buscacep`) para o namespace `apps`.

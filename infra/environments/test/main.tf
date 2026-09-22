@@ -42,7 +42,7 @@ module "gke" {
   pods_range_name      = module.network.pods_range_name
   services_range_name  = module.network.services_range_name
   min_node_count       = var.grafana_stack_mode == "distributed" ? 2 : 1
-  max_node_count       = var.grafana_stack_mode == "distributed" ? 4 : 2
+  max_node_count       = var.grafana_stack_mode == "distributed" ? 6 : 4
   machine_type         = var.grafana_stack_mode == "distributed" ? "e2-standard-4" : "e2-standard-2"
   enable_gpu_pool      = var.enable_gpu_pool
   gpu_type             = var.gpu_type

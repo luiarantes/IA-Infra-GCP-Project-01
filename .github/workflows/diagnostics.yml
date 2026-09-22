@@ -11,6 +11,7 @@ on:
         options:
           - "check_cost"
           - "inspect"
+          - "expand_nodes"
           - "verify_destroyed"
           - "cleanup_gpu_pool"
           - "inject_probe_crash"
@@ -118,6 +119,22 @@ jobs:
 
           echo "=== GPU QUOTAS IN US-CENTRAL1 ==="
           gcloud compute regions describe us-central1 --format="yaml(quotas)" | grep -B 1 -A 3 -i "gpu" || true
+
+      - name: Expandir Node Pool Autoscaling (max_node_count = 4)
+        if: github.event.inputs.action == 'expand_nodes'
+        run: |
+          echo "🚀 Atualizando autoscaling de spot-node-pool para min=1, max=4..."
+          gcloud container node-pools update spot-node-pool \
+            --cluster aiops-gke \
+            --zone us-central1-a \
+            --enable-autoscaling \
+            --min-nodes=1 \
+            --max-nodes=4
+          echo "✅ Autoscaling atualizado com sucesso!"
+          echo "⏳ Aguardando 40s para o Cluster Autoscaler avaliar pods pendentes..."
+          sleep 40
+          kubectl get nodes -o wide
+          kubectl get pods -n apps -o wide
 
       - name: Cleanup GPU Spot Pool (se selecionado)
         if: github.event.inputs.action == 'cleanup_gpu_pool'
