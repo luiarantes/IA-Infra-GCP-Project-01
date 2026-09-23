@@ -16,7 +16,7 @@ window.AIOPS_DATA = {
       "icon": "activity",
       "local_url": "http://localhost:5080",
       "local_port": 5080,
-      "gcp_url": "http://34.61.168.142:5080",
+      "gcp_url": "http://35.224.35.239:5080",
       "credentials": {
         "user": "admin@example.com",
         "pass": "ComplexPassword123#"
@@ -37,7 +37,7 @@ window.AIOPS_DATA = {
       "icon": "bar-chart",
       "local_url": "http://localhost:3000",
       "local_port": 3000,
-      "gcp_url": "http://136.64.104.135:3000",
+      "gcp_url": "http://104.154.156.205:3000",
       "credentials": {
         "user": "admin",
         "pass": "admin"
@@ -58,7 +58,7 @@ window.AIOPS_DATA = {
       "icon": "flame",
       "local_url": "http://localhost:4040",
       "local_port": 4040,
-      "gcp_url": "http://34.41.119.68:4040",
+      "gcp_url": "http://34.173.200.58:4040",
       "credentials": null,
       "health_path": null,
       "is_external": false,
