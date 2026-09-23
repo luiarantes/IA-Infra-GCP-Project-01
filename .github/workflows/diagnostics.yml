@@ -15,6 +15,7 @@ on:
           - "expose_web_services"
           - "verify_destroyed"
           - "cleanup_gpu_pool"
+          - "deploy_gpu_ollama"
           - "inject_probe_crash"
           - "restore_service_api"
           - "inject_oom_kill"
@@ -171,6 +172,41 @@ jobs:
           echo "🧹 Excluindo gpu-spot-pool com erro no cluster..."
           gcloud container node-pools delete gpu-spot-pool --cluster aiops-gke --zone us-central1-a --quiet || true
           echo "✅ gpu-spot-pool removido do cluster GKE com sucesso."
+
+      - name: Deploy Ollama com Aceleração de GPU NVIDIA
+        if: github.event.inputs.action == 'deploy_gpu_ollama'
+        run: |
+          echo "🚀 Deletando deployment de CPU anterior do Ollama (se existir)..."
+          kubectl delete deployment ollama -n observability --ignore-not-found
+          echo "🚀 Aplicando observability/ollama-gpu.yaml (com tolerations e requests de GPU NVIDIA)..."
+          kubectl apply -f observability/ollama-gpu.yaml
+
+          echo "⏳ Aguardando o GKE Autoscaler provisionar o nó Spot com NVIDIA GPU e o pod iniciar..."
+          for i in $(seq 1 40); do
+            STATUS=$(kubectl get pod -l app=ollama -n observability -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "Pending")
+            NODE=$(kubectl get pod -l app=ollama -n observability -o jsonpath='{.items[0].spec.nodeName}' 2>/dev/null || echo "None")
+            echo "[$i/40] Pod Status: $STATUS | Node: $NODE"
+            if [ "$STATUS" = "Running" ]; then
+              echo "✅ Pod Ollama GPU em execução no nó $NODE!"
+              break
+            fi
+            sleep 10
+          done
+
+          echo "=== K8S NODES COM GPU ==="
+          kubectl get nodes -l cloud.google.com/gke-gpu=true -o wide || true
+
+          echo "=== POD OLLAMA STATUS ==="
+          kubectl get pod -l app=ollama -n observability -o wide
+
+          echo "=== STATUS DO ACELERADOR NVIDIA ==="
+          kubectl exec -n observability deploy/ollama -- nvidia-smi || true
+
+          echo "=== PRÉ-AQUECIMENTO DO MODELO QWEN NA GPU ==="
+          kubectl exec -n observability deploy/ollama -- ollama pull qwen2.5-coder:7b
+
+          echo "=== MODELOS DISPONÍVEIS NO OLLAMA GPU ==="
+          kubectl exec -n observability deploy/ollama -- ollama list
 
       - name: Injetar Falha de Liveness Probe (service-api)
         if: github.event.inputs.action == 'inject_probe_crash'

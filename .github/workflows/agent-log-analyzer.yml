@@ -162,6 +162,7 @@ jobs:
           AIOPS_PROMETHEUS_URL: "http://localhost:5080/api/default/prometheus"
           AIOPS_LOKI_URL: "http://localhost:3100"
           AIOPS_LOCAL_TRACKER: "github"
+          AIOPS_OLLAMA_TIMEOUT: "600"
         run: |
           set -e
           echo "🤖 [AIOps Privado]: Iniciando investigação com Modelo Local no GKE (Zero Data Export)..."

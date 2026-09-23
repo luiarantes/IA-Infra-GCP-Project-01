@@ -80,6 +80,7 @@ jobs:
           AIOPS_AI_PROVIDER: "ollama"
           AIOPS_OLLAMA_MODEL: "qwen2.5-coder:7b"
           AIOPS_LOCAL_TRACKER: "github"
+          AIOPS_OLLAMA_TIMEOUT: "600"
         run: |
           set -e
           echo "🤖 [AIOps Privado]: Iniciando geração de fix com Modelo Local no GKE (Zero Data Export)..."

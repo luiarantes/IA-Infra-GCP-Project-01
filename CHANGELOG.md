@@ -21,6 +21,8 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 - **chaos-test**: Exposição nativa do Chaos Mesh Dashboard (porta 2333) sem necessidade de port-forward, configurado como `NodePort` no cluster local Kind e `LoadBalancer` (IP público) no GKE, com target `make chaos-ui` e integração direta no Painel de Controle.
 - **scripts**: Atualização do `sync_control_panel.py` e catálogo do Painel de Controle (`links.json` e `data.js`) com suporte à descoberta e mapeamento dinâmico dos LoadBalancers do Grafana OSS e Pyroscope no GCP GKE.
 - **scripts**: Script automatizado `sync_control_panel.py` para descoberta dinâmica de portas locais (Kind) e IPs externos de Load Balancers (GKE), com suporte a resumo em Markdown e integração com `make panel`, `make panel-sync` e GitHub Actions ($GITHUB_STEP_SUMMARY).
+- **ci/cd**: Adição da ação `deploy_gpu_ollama` no workflow `diagnostics.yml` e aprimoramento em `deploy-observability.yml` para detecção dinâmica de pools de GPU (`gpu-spot-pool`), provisionando o Pod Ollama com tolerations e requests de GPU NVIDIA Spot e pré-aquecimento do modelo `qwen2.5-coder:7b`.
+- **agents**: Elevação do timeout padrão do Ollama (`AIOPS_OLLAMA_TIMEOUT`) para 600s nos workflows `agent-log-analyzer.yml` e `agent-pr-creator.yml` para comportar inferências de modelos locais em janelas amplas de telemetria.
 - **ci/cd**: Adição da ação `fix_iam_access` no workflow `diagnostics.yml` para restauração automatizada de permissões IAM (Owner e Container Admin) para a conta do projeto no GCP.
 
 ### Fixed
