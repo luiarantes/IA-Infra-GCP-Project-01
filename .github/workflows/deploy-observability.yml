@@ -115,11 +115,12 @@ jobs:
           kubectl describe pod -l app=loki -n observability || true
 
 
-      - name: Exibir IPs de Acesso Público (OpenObserve e Grafana)
+      - name: Exibir IPs de Acesso Público (OpenObserve, Grafana e Pyroscope)
         run: |
           echo "⏳ Aguardando atribuição de IPs públicos nos LoadBalancers..."
           OO_IP=""
           GRAFANA_IP=""
+          PYROSCOPE_IP=""
           for i in {1..30}; do
             if [ -z "$OO_IP" ]; then
               OO_IP=$(kubectl get svc openobserve -n observability -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)
@@ -127,7 +128,10 @@ jobs:
             if [ -z "$GRAFANA_IP" ]; then
               GRAFANA_IP=$(kubectl get svc grafana -n observability -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)
             fi
-            if [ -n "$OO_IP" ] && [ -n "$GRAFANA_IP" ]; then
+            if [ -z "$PYROSCOPE_IP" ]; then
+              PYROSCOPE_IP=$(kubectl get svc pyroscope -n observability -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)
+            fi
+            if [ -n "$OO_IP" ] && [ -n "$GRAFANA_IP" ] && [ -n "$PYROSCOPE_IP" ]; then
               break
             fi
             sleep 5
@@ -138,6 +142,7 @@ jobs:
           echo "   Credenciais: admin@example.com / ComplexPassword123#"
           echo "📈 Grafana OSS Web UI: http://${GRAFANA_IP:-<pendente>}:3000"
           echo "   Credenciais: admin / admin"
+          echo "🔥 Pyroscope Web UI: http://${PYROSCOPE_IP:-<pendente>}:4040"
           echo "========================================================="
 
       - name: Sincronizar e Publicar Painel de Controle AIOps

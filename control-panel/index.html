@@ -206,6 +206,8 @@
         currentPlatform = savedTab || currentEnv || 'local';
         updateBadges();
         setPlatformTab(currentPlatform);
+        // Executa automaticamente a verificação de conectividade no carregamento da página e refresh (F5 / Cmd+R)
+        runHealthChecks(true);
       } else {
         fetch('links.json')
           .then(res => res.json())
@@ -215,6 +217,8 @@
             currentPlatform = savedTab || currentEnv || 'local';
             updateBadges();
             setPlatformTab(currentPlatform);
+            // Executa automaticamente a verificação de conectividade no carregamento da página e refresh (F5 / Cmd+R)
+            runHealthChecks(true);
           })
           .catch(err => {
             console.error('Erro ao carregar dados:', err);
@@ -610,7 +614,18 @@
       }, 2200);
     }
 
-    async function runHealthChecks() {
+    let isCheckingHealth = false;
+
+    async function runHealthChecks(showNotification = true) {
+      if (isCheckingHealth) return;
+      isCheckingHealth = true;
+
+      const btn = document.querySelector('.header-actions .btn-primary');
+      if (btn) {
+        btn.disabled = true;
+        btn.style.opacity = '0.75';
+      }
+
       const platformLabels = {
         'all': 'Geral (Todas)',
         'local': 'Local (Kind)',
@@ -618,8 +633,17 @@
         'aiops': 'CI/CD & Automação'
       };
       const pName = platformLabels[currentPlatform] || currentPlatform;
-      showToast(`Verificando conectividade [${pName}]...`);
-      if (!appData) return;
+      if (showNotification) {
+        showToast(`Verificando conectividade [${pName}]...`);
+      }
+      if (!appData) {
+        if (btn) {
+          btn.disabled = false;
+          btn.style.opacity = '1';
+        }
+        isCheckingHealth = false;
+        return;
+      }
 
       let svcsToCheck = appData.services.filter(s => !s.is_external);
       if (currentPlatform === 'local') {
@@ -655,9 +679,17 @@
         }
       }
 
+      if (btn) {
+        btn.disabled = false;
+        btn.style.opacity = '1';
+      }
+      isCheckingHealth = false;
+
       const searchVal = document.getElementById('search-input') ? document.getElementById('search-input').value : '';
       render(searchVal);
-      showToast(`Verificação [${pName}] concluída!`);
+      if (showNotification) {
+        showToast(`Verificação [${pName}] concluída!`);
+      }
     }
 
     window.addEventListener('DOMContentLoaded', init);

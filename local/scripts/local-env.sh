@@ -64,10 +64,10 @@ provision_workloads() {
         kubectl apply -f "${INFRA_DIR}/observability/loki.yaml"
     fi
 
-    kubectl apply -f "${INFRA_DIR}/observability/pyroscope.yaml"
+    sed 's/type: LoadBalancer/type: ClusterIP/g' "${INFRA_DIR}/observability/pyroscope.yaml" | kubectl apply -f -
     kubectl apply -f "${INFRA_DIR}/observability/beyla.yaml"
     kubectl apply -f "${INFRA_DIR}/observability/grafana-dashboards.yaml"
-    kubectl apply -f "${INFRA_DIR}/observability/grafana.yaml"
+    sed 's/type: LoadBalancer/type: ClusterIP/g' "${INFRA_DIR}/observability/grafana.yaml" | kubectl apply -f -
 
 
     echo "🔨 [3/6] Construindo imagens Docker dos microsserviços e do BuscaCEP..."
