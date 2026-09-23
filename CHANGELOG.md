@@ -8,6 +8,7 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 ## [Unreleased]
 
 ### Added
+- **control-panel**: Execução automática do teste de conectividade (health checks) no carregamento inicial da página e em eventos de atualização (F5 / Cmd+R), validando e atualizando o status dos serviços em tempo real sem exigir acionamento manual.
 - **control-panel**: Navegação por abas de plataforma no topo com filtragem contextual reativa (Todas as Plataformas, Ambiente Local Kind, Google Cloud GCP e CI/CD Automação), badges dinâmicos de contagem de recursos, persistência em localStorage e comandos de terminal dedicados por ambiente.
 - **ci/cd**: Validação pós-deploy automatizada (Smoke Test E2E com k6) no workflow `deploy-microservices.yml` via Job Kubernetes efêmero no namespace `apps`, validando conectividade de rede, DNS e status HTTP 200/202 na cadeia completa de microsserviços.
 - **k6**: Implementação de script dedicado de smoke test (`load-test/smoke-test.js`) e manifest de Job (`load-test/smoke-job.yaml`), com targets `make smoke-test` e `make local-smoke-test`.
