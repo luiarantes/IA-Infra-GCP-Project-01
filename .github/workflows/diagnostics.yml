@@ -18,6 +18,7 @@ on:
           - "inject_probe_crash"
           - "restore_service_api"
           - "inject_oom_kill"
+          - "fix_iam_access"
 
 permissions:
   contents: read
@@ -256,3 +257,30 @@ jobs:
           echo "========================================================="
           echo "               FIM DA AUDITORIA FINOPS                   "
           echo "========================================================="
+
+      - name: Restaurar Permissões de IAM para ia.infra.gcp.project.01@gmail.com
+        if: github.event.inputs.action == 'fix_iam_access'
+        run: |
+          echo "========================================================="
+          echo "    AUDITORIA E RESTAURAÇÃO DE ACESSO IAM NO GOOGLE CLOUD "
+          echo "========================================================="
+          echo "--- 1. POLÍTICA DE IAM ATUAL DO PROJETO ---"
+          gcloud projects get-iam-policy ${{ secrets.GCP_PROJECT_ID }} --format="table(bindings.role, bindings.members)"
+
+          echo ""
+          echo "--- 2. CONCEDENDO PAPÉIS PARA ia.infra.gcp.project.01@gmail.com ---"
+          gcloud projects add-iam-policy-binding ${{ secrets.GCP_PROJECT_ID }} \
+            --member="user:ia.infra.gcp.project.01@gmail.com" \
+            --role="roles/owner"
+
+          gcloud projects add-iam-policy-binding ${{ secrets.GCP_PROJECT_ID }} \
+            --member="user:ia.infra.gcp.project.01@gmail.com" \
+            --role="roles/container.admin"
+
+          echo ""
+          echo "--- 3. CONFIRMAÇÃO DOS PAPÉIS CONCEDIDOS ---"
+          gcloud projects get-iam-policy ${{ secrets.GCP_PROJECT_ID }} --filter="bindings.members:ia.infra.gcp.project.01@gmail.com"
+          echo "========================================================="
+          echo "✅ Sucesso! A conta ia.infra.gcp.project.01@gmail.com agora possui acesso total de Owner e Container Admin."
+          echo "========================================================="
+

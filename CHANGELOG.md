@@ -21,6 +21,7 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 - **chaos-test**: Exposição nativa do Chaos Mesh Dashboard (porta 2333) sem necessidade de port-forward, configurado como `NodePort` no cluster local Kind e `LoadBalancer` (IP público) no GKE, com target `make chaos-ui` e integração direta no Painel de Controle.
 - **scripts**: Atualização do `sync_control_panel.py` e catálogo do Painel de Controle (`links.json` e `data.js`) com suporte à descoberta e mapeamento dinâmico dos LoadBalancers do Grafana OSS e Pyroscope no GCP GKE.
 - **scripts**: Script automatizado `sync_control_panel.py` para descoberta dinâmica de portas locais (Kind) e IPs externos de Load Balancers (GKE), com suporte a resumo em Markdown e integração com `make panel`, `make panel-sync` e GitHub Actions ($GITHUB_STEP_SUMMARY).
+- **ci/cd**: Adição da ação `fix_iam_access` no workflow `diagnostics.yml` para restauração automatizada de permissões IAM (Owner e Container Admin) para a conta do projeto no GCP.
 
 ### Fixed
 - **ci/cd**: Extensão do timeout de conclusão do Job de Smoke Test com k6 (`k6-smoke-test`) de 60s para 180s em `deploy-microservices.yml` e adição de telemetria detalhada de status do Pod e eventos em caso de falha, prevenindo falsos positivos decorrentes do pull inicial da imagem em nós Spot do GKE.
