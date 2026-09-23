@@ -344,6 +344,18 @@ def sync_panel(target_env=None, do_open=False, generate_summary=False):
                 if lb:
                     ip = lb["ip"]
                     svc["gcp_url"] = f"http://{ip}:5080" if ip != "<PENDING>" else "http://<PENDING>:5080"
+            elif svc_id == "grafana":
+                lb = gcp_lbs.get("grafana")
+                if lb:
+                    ip = lb["ip"]
+                    port_str = f":{lb['port']}" if lb['port'] != 80 else ""
+                    svc["gcp_url"] = f"http://{ip}{port_str}" if ip != "<PENDING>" else "http://<PENDING>:3000"
+            elif svc_id == "pyroscope":
+                lb = gcp_lbs.get("pyroscope")
+                if lb:
+                    ip = lb["ip"]
+                    port_str = f":{lb['port']}" if lb['port'] != 80 else ""
+                    svc["gcp_url"] = f"http://{ip}{port_str}" if ip != "<PENDING>" else "http://<PENDING>:4040"
             elif svc_id == "chaos_dashboard":
                 lb = gcp_lbs.get("chaos-dashboard")
                 if lb:
