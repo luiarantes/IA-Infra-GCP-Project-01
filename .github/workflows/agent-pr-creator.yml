@@ -90,13 +90,20 @@ jobs:
           trap "kill $PF_OLLAMA 2>/dev/null || true" EXIT
 
           echo "⏳ Aguardando endpoint do Ollama GPU..."
+          CONNECTED=false
           for i in {1..30}; do
             if curl -s http://localhost:11434/api/version >/dev/null 2>&1; then
               echo "✅ Conexão com o Ollama GPU estabelecida com sucesso!"
+              CONNECTED=true
               break
             fi
             sleep 1
           done
+          if [ "$CONNECTED" != "true" ]; then
+            echo "❌ Erro: Endpoint do Ollama não respondeu na porta 11434 após 30 segundos. Logs do port-forward:"
+            cat /tmp/pf-ollama-pr.log || true
+            exit 1
+          fi
 
           EXTRA_HINT=""
           if [ -n "$CONTEXT_INSTRUCTION" ]; then

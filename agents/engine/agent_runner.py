@@ -521,6 +521,7 @@ Importante: execute primeiro as ferramentas de inspeção necessárias para diag
     ]
 
     print(f"🤖 Iniciando Agente AIOps [{role} | Modelo: {OLLAMA_MODEL} via {AI_PROVIDER}]...")
+    tool_call_history: List[str] = []
 
     for turn in range(1, max_turns + 1):
         print(f"\n--- [Turno {turn}/{max_turns}] Consultando Modelo ---")
@@ -572,6 +573,17 @@ Importante: execute primeiro as ferramentas de inspeção necessárias para diag
         if tool_name == "publish_scorecard" and ("Scorecard" in obs) and ("Falha" not in obs and "Erro" not in obs):
             print(f"🎯 Ação terminal '{tool_name}' concluída com sucesso! Encerrando ciclo do agente.")
             return obs
+
+        # Prevenção de loops e orientação de progresso para modelos menores
+        tool_call_sig = f"{tool_name}:{json.dumps(tool_args, sort_keys=True)}"
+        if tool_call_history.count(tool_call_sig) >= 1:
+            if role == "log-analyzer":
+                obs += "\n\n⚠️ ATENÇÃO: Você repetiu a mesma chamada de ferramenta anterior. Você já possui evidências suficientes. Formule agora sua conclusão e chame a ferramenta 'create_issue' com title, body detalhado (RCA) e labels."
+            elif role == "pr-creator":
+                obs += "\n\n⚠️ ATENÇÃO: Chamada repetida. Se os arquivos já foram lidos, aplique a correção via 'apply_patch' e crie o Pull Request com 'create_git_pr'."
+        elif role == "log-analyzer" and turn >= 3:
+            obs += "\n\n[ORIENTAÇÃO]: Dados de diagnóstico e inspeção foram coletados com sucesso. Prossiga para abrir a Issue de achado chamando a ferramenta 'create_issue' (com title, body contendo RCA e labels)."
+        tool_call_history.append(tool_call_sig)
 
         messages.append({
             "role": "user",

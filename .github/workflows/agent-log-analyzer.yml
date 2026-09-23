@@ -178,13 +178,20 @@ jobs:
           trap "kill $PF_OLLAMA $PF_OO $PF_LOKI 2>/dev/null || true" EXIT
 
           echo "⏳ Aguardando disponibilidade do endpoint do Ollama GPU..."
+          CONNECTED=false
           for i in {1..30}; do
             if curl -s http://localhost:11434/api/version >/dev/null 2>&1; then
               echo "✅ Conexão com o Ollama GPU estabelecida com sucesso!"
+              CONNECTED=true
               break
             fi
             sleep 1
           done
+          if [ "$CONNECTED" != "true" ]; then
+            echo "❌ Erro: Endpoint do Ollama não respondeu na porta 11434 após 30 segundos. Logs do port-forward:"
+            cat /tmp/pf-ollama.log || true
+            exit 1
+          fi
 
           EXTRA_ARGS=""
           if [ -n "${{ inputs.target_app }}" ]; then
@@ -201,7 +208,7 @@ jobs:
           eval python3 agents/engine/agent_runner.py \
             --role "log-analyzer" \
             --task-file "agents/log-analyzer/TASK.md" \
-            --context "\"O pre-check encontrou sinal(is) de problema no cluster GKE: ${SIGNALS_FOUND}\"" \
+            --context "\"O pre-check encontrou sinal(is) de problema no cluster GKE: ${SIGNALS_FOUND}. Investigue com kubectl_inspect e abra a issue formal de diagnóstico com a ferramenta create_issue.\"" \
             ${EXTRA_ARGS}
 
       # Motor Alternativo: Claude Code (SaaS externo / Anthropic API)

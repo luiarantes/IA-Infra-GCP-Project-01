@@ -62,32 +62,17 @@ precisa checar tudo se só uma categoria foi sinalizada.
    evidência for insuficiente, diga isso explicitamente — não invente uma
    causa sem evidência.
 
-7. Abra uma GitHub Issue com **`gh issue create --label agent-finding`**
-   (o label é obrigatório — é o que aciona o próximo agente, responsável
-   por avaliar se existe um fix a propor). Se o comando falhar porque o
-   label não existe ainda, rode
-   `gh label create agent-finding --color FBCA04 --description "Achado de agente de observabilidade"`
-   e tente de novo. A issue deve conter:
-   - Título curto e descritivo, mencionando o app e a categoria (ex:
-     "service-api: latência p95 elevada - causa provável: X")
-   - O que foi observado (categoria do sinal, pod, horário aproximado,
-     valores relevantes — contagem de restarts, % de CPU/memória, taxa de
-     erro, latência medida)
-   - Trecho relevante dos logs/métricas que embasa sua conclusão
-   - Sua hipótese de causa raiz (ou "causa não determinada" com o que foi
-     verificado)
+7. Abra uma GitHub Issue chamando a ferramenta **`create_issue`** com os parâmetros:
+   - `title`: Título curto e descritivo, mencionando o app e a categoria (ex: "service-api: restart_count elevado - liveness probe falhando")
+   - `body`: Relatório completo em Markdown contendo:
+     - O que foi observado (categoria do sinal, pod, horário aproximado, valores relevantes — contagem de restarts, etc.)
+     - Trecho relevante dos logs/eventos que embasa sua conclusão (ex: HTTP probe failed with statuscode: 404)
+     - Sua hipótese de causa raiz detalhada (Root Cause Analysis - RCA)
+   - `labels`: Lista contendo `["agent-finding", "signal:<categoria>", "app:<nome-do-app>"]` (ex: `["agent-finding", "signal:restart_count", "app:service-api"]`).
 
 ## Regras importantes
 
-- Você só tem acesso a comandos de **leitura** sobre o cluster/logs, mais
-  a criação da issue e do label: `kubectl get`, `kubectl describe`,
-  `kubectl logs`, `kubectl top`, `gcloud logging read`, `gcloud
-  monitoring`, `gh issue create`, `gh issue list`, `gh label create`. Não
-  tente rodar `kubectl apply`/`delete`/`exec`, nenhum comando `gcloud ...
-  create/update/delete`, `git push`, ou `gh pr create` — essas ações não
-  estão disponíveis para você nesta fase, mesmo que pareçam a solução
-  óbvia.
+- Você tem acesso estritamente a ferramentas de **leitura** e investigação (`kubectl_inspect`, `query_prometheus`, `scrape_pod_metrics`, `query_loki_logs`, `read_file`) e à ferramenta de abertura de diagnóstico (`create_issue`).
+- Ao identificar a causa-raiz através dos comandos de inspeção (geralmente em 2 a 3 turnos), conclua a tarefa chamando **`create_issue`**. Não repita chamadas idênticas de inspeção.
 - Escreva a issue em português, direto ao ponto.
-- Se não encontrar evidência que confirme o sinal do pre-check (falso
-  positivo), abra a issue mesmo assim explicando que não encontrou
-  evidência de problema atual.
+- Se não encontrar evidência que confirme o sinal do pre-check (falso positivo), abra a issue mesmo assim explicando que não encontrou evidência de problema atual.

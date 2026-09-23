@@ -26,6 +26,8 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 - **ci/cd**: Adição da ação `fix_iam_access` no workflow `diagnostics.yml` para restauração automatizada de permissões IAM (Owner e Container Admin) para a conta do projeto no GCP.
 
 ### Fixed
+- **agents**: Aprimoramento da resiliência e prevenção de repetição de chamadas de ferramentas no motor agnóstico `agent_runner.py` e alinhamento das instruções em `agents/log-analyzer/TASK.md` com a ferramenta `create_issue`, garantindo a abertura autônoma de incidentes sem repetições cíclicas de comandos de inspeção.
+- **ci/cd**: Validação e verificação robusta de conexão HTTP com o endpoint do Ollama nos workflows `agent-log-analyzer.yml` e `agent-pr-creator.yml`, capturando logs de port-forward e prevenindo falhas silenciosas de timeout.
 - **ci/cd**: Extensão do timeout de conclusão do Job de Smoke Test com k6 (`k6-smoke-test`) de 60s para 180s em `deploy-microservices.yml` e adição de telemetria detalhada de status do Pod e eventos em caso de falha, prevenindo falsos positivos decorrentes do pull inicial da imagem em nós Spot do GKE.
 - **ci/cd**: Atualização do workflow `diagnostics.yml` com escopo estrito para o namespace `apps` nas ações de injeção de caos e recuperação de microsserviços (`service-api`), e ampliação da inspeção para todos os namespaces do cluster (`-A`).
 - **observability**: Correção de falsos positivos nos painéis de erro do Grafana (Loki), restringindo a regex de códigos 5xx e palavras-chave de erro com delimitação de palavras (`\b`) e contexto HTTP para evitar casamento indevido com portas TCP efêmeras de clientes e UUIDs de mensagens.
